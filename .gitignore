@@ -1,0 +1,6 @@
+.vscode/
+bin/
+obj/
+test/
+tas.cfg
+out.txt
