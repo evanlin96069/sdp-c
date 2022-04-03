@@ -22,7 +22,7 @@ int main(int argc, char* argv[]) {
             printf("Options:\n");
             printf("--help          Display this information.\n");
             printf("--version       Display version.\n");
-            printf("-V              Dump parsable info into a text file.\n");
+            printf("-v              Dump parsable info into a text file.\n");
             printf("-t              Convert demo file to .cfg TAS file.\n");
             printf("-o <file>       Place the output into <file>.\n");
             return 0;
