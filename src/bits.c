@@ -1,15 +1,13 @@
 #include "bits.h"
+
 #include <stdlib.h>
 #include <assert.h>
 
+#include "alloc.h"
+
 BitStream* bits_init(size_t byte_size, FILE* fp) {
-    BitStream* bits = malloc(sizeof(BitStream));
-    if (!bits) return NULL;
-    bits->bits = malloc(byte_size);
-    if (!bits->bits) {
-        free(bits);
-        return NULL;
-    }
+    BitStream* bits = malloc_s(sizeof(BitStream));
+    bits->bits = malloc_s(byte_size);
     bits->bit_size = fread(bits->bits, 1, byte_size, fp) * 8;
     bits->current = 0;
     return bits;
@@ -64,22 +62,24 @@ size_t bits_read_bytes(char* buf, size_t len, BitStream* bits) {
     return i;
 }
 
-char* bits_read_str(size_t* len, BitStream* bits) {
-    uint8_t* buf = NULL;
+size_t bits_read_str(char* dest, size_t max_bytes, BitStream* bits) {
+    if (!max_bytes)
+        return 0;
+
     uint8_t n;
-    *len = 0;
+    size_t len = 0;
     do {
-        if (bits->current + 8 > bits->bit_size) break;
-        buf = realloc(buf, *len + 1);
+        if (bits->current + 8 > bits->bit_size)
+            break;
         n = 0;
         for (size_t i = 0; i < 8; i++) {
             n = (n << 1) | ((bits->bits[bits->current >> 3] >> (7 - (bits->current % 8))) & 1);
             bits->current++;
         }
-        buf[*len] = n;
-        (*len)++;
-    } while (n);
-    return (char*)buf;
+        dest[len] = n;
+        len++;
+    } while (n && len < max_bytes);
+    return len;
 }
 
 void bits_free(BitStream* bits) {

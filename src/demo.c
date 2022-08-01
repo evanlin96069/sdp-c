@@ -1,11 +1,13 @@
 #include "demo.h"
-#include "bits.h"
+
 #include <stdlib.h>
 #include <string.h>
 
+#include "bits.h"
+#include "alloc.h"
+
 Demo* new_demo(char* path) {
-    Demo* demo = malloc(sizeof(Demo));
-    if (!demo) return NULL;
+    Demo* demo = malloc_s(sizeof(Demo));
     char* file_name = strrchr(path, '/');
     file_name = file_name ? (file_name + 1) : path;
     demo->path = path;
@@ -119,7 +121,7 @@ int demo_parse(Demo* demo) {
     int i = 0;
     while (1) {
         demo->message_len++;
-        demo->messages = realloc(demo->messages, sizeof(DemoMessage) * (i + 1));
+        demo->messages = realloc_s(demo->messages, sizeof(DemoMessage) * (i + 1));
 
         demo->messages[i].type = bits_read_le_u8(bits);
         demo->messages[i].tick = bits_read_le_u32(bits);
@@ -140,7 +142,7 @@ int demo_parse(Demo* demo) {
         case PACKET:
         {
             size_t byte_size;
-            demo->messages[i].data = malloc(sizeof(CmdInfo));
+            demo->messages[i].data = malloc_s(sizeof(CmdInfo));
             parse_cmd_info((CmdInfo*)demo->messages[i].data, bits);
             bits->current += 8 << 3;
             byte_size = bits_read_le_u32(bits);
@@ -154,14 +156,14 @@ int demo_parse(Demo* demo) {
         case CONSOLECMD:
         {
             size_t byte_size = bits_read_le_u32(bits);
-            demo->messages[i].data = malloc(byte_size);
+            demo->messages[i].data = malloc_s(byte_size);
             bits_read_bytes((char*)demo->messages[i].data, byte_size, bits);
         }
 
         break;
 
         case USERCMD:
-            demo->messages[i].data = malloc(sizeof(UserCmd));
+            demo->messages[i].data = malloc_s(sizeof(UserCmd));
             parse_usercmd((UserCmd*)demo->messages[i].data, bits);
             break;
 
