@@ -4,9 +4,9 @@
 
 BitStream* bits_init(size_t byte_size, FILE* fp) {
     BitStream* bits = malloc(sizeof(BitStream));
-    if(!bits) return NULL;
+    if (!bits) return NULL;
     bits->bits = malloc(byte_size);
-    if(!bits->bits) {
+    if (!bits->bits) {
         free(bits);
         return NULL;
     }
@@ -16,7 +16,7 @@ BitStream* bits_init(size_t byte_size, FILE* fp) {
 }
 
 int bits_read_one_bit(BitStream* bits) {
-    if(bits->current >= bits->bit_size) {
+    if (bits->current >= bits->bit_size) {
         bits->current -= 8;
     }
     int bit = ((bits->bits[bits->current >> 3] >> (bits->current % 8)) & 1);
@@ -43,7 +43,7 @@ float bits_read_le_f32(BitStream* bits) {
 
 uint32_t bits_read_bits(size_t bit_size, BitStream* bits) {
     uint32_t n = 0;
-    for(size_t i = 0; i < bit_size; i++) {
+    for (size_t i = 0; i < bit_size; i++) {
         n |= bits_read_one_bit(bits) << i;
     }
     return n;
@@ -52,9 +52,9 @@ uint32_t bits_read_bits(size_t bit_size, BitStream* bits) {
 size_t bits_read_bytes(char* buf, size_t len, BitStream* bits) {
     uint8_t* ptr = (uint8_t*)buf;
     size_t i;
-    for(i = 0; i < len; i++) {
+    for (i = 0; i < len; i++) {
         uint8_t n = 0;
-        for(size_t j = 0; j < 8; j++) {
+        for (size_t j = 0; j < 8; j++) {
             n = (n << 1) | ((bits->bits[bits->current >> 3] >> (7 - (bits->current % 8))) & 1);
             bits->current++;
         }
@@ -69,16 +69,16 @@ char* bits_read_str(size_t* len, BitStream* bits) {
     uint8_t n;
     *len = 0;
     do {
-        if(bits->current + 8 > bits->bit_size) break;
+        if (bits->current + 8 > bits->bit_size) break;
         buf = realloc(buf, *len + 1);
         n = 0;
-        for(size_t i = 0; i < 8; i++) {
+        for (size_t i = 0; i < 8; i++) {
             n = (n << 1) | ((bits->bits[bits->current >> 3] >> (7 - (bits->current % 8))) & 1);
             bits->current++;
         }
         buf[*len] = n;
         (*len)++;
-    } while(n);
+    } while (n);
     return (char*)buf;
 }
 
