@@ -30,17 +30,18 @@ typedef struct {
     uint32_t sign_on_length;
 } DemoHeader;
 
-typedef struct {
+typedef struct _DemoMessage DemoMessage;
+struct _DemoMessage {
     uint8_t type;
     int32_t tick;
     void* data;
-} DemoMessage;
+    DemoMessage* next;
+};
 
 typedef struct {
     char* path;
     char* file_name;
     DemoHeader header;
-    size_t message_len;
     DemoMessage* messages;
 } Demo;
 
