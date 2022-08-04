@@ -7,7 +7,7 @@ int tests_run = 0;
 
 static char* test_demo_parse() {
     Demo* demo = new_demo("test/resources/Portal_5135.dem");
-    int tick = demo_parse(demo);
+    int tick = demo_parse(demo, false);
     mu_assert("[FAILED] Portal_5135.dem: wrong measured ticks.", tick == 1247);
     mu_assert("[FAILED] Portal_5135.dem: wrong file name.", strcmp(demo->file_name, "Portal_5135.dem") == 0);
     mu_assert("[FAILED] Portal_5135.dem: wrong map name.", strcmp(demo->header.map_name, "testchmb_a_11") == 0);

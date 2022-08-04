@@ -77,7 +77,7 @@ int main(int argc, char* argv[]) {
     if (mode != QUICK_MODE) {
         printf("[INFO] Parsing demo...\n");
     }
-    int measured_ticks = demo_parse(demo);
+    int measured_ticks = demo_parse(demo, mode == QUICK_MODE);
     if (measured_ticks < 0) {
         demo_free(demo);
         fprintf(stderr, "[ERROR] Error while parsing demo.\n");

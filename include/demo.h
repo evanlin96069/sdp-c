@@ -89,7 +89,7 @@ typedef struct {
 } UserCmd;
 
 Demo* new_demo(char* path);
-int demo_parse(Demo* demo);
+int demo_parse(Demo* demo, bool quick_mode);
 void demo_print_header(const Demo* demo, FILE* fp);
 void demo_verbose(const Demo* demo, FILE* fp);
 void demo_gen_tas_script(const Demo* demo, FILE* fp);

@@ -53,9 +53,6 @@ static void parse_cmd_info(CmdInfo* info, BitStream* bits) {
 }
 
 static void parse_usercmd(UserCmd* cmd, BitStream* bits) {
-    cmd->cmd = bits_read_le_u32(bits);
-    size_t byte_size = bits_read_le_u32(bits);
-    size_t end_index = bits->current + (byte_size << 3);
     if ((cmd->has_command_number = bits_read_one_bit(bits)))
         cmd->command_number = bits_read_le_u32(bits);
 
@@ -92,13 +89,9 @@ static void parse_usercmd(UserCmd* cmd, BitStream* bits) {
         cmd->mouse_dx = bits_read_le_u16(bits);
     if ((cmd->has_mouse_dy = bits_read_one_bit(bits)))
         cmd->mouse_dy = bits_read_le_u16(bits);
-
-    if (bits->current > end_index)
-        fprintf(stderr, "[WARNING] Usercmd not parse correctly.\n");
-    bits->current = end_index;
 }
 
-int demo_parse(Demo* demo) {
+int demo_parse(Demo* demo, bool quick_mode) {
     FILE* fp = fopen(demo->path, "rb");
     if (!fp) {
         fprintf(stderr, "[ERROR] Cannot open file %s.\n", demo->path);
@@ -134,7 +127,10 @@ int demo_parse(Demo* demo) {
         case SIGN_ON:
         {
             size_t byte_size;
-            bits->current += (76 + 8) << 3;
+            // PacketInfo(76)
+            bits->current += 76 << 3;
+            // InSequence(4) + OutSequence(4)
+            bits->current += 8 << 3;
             byte_size = bits_read_le_u32(bits);
             bits->current += byte_size << 3;
         }
@@ -143,7 +139,14 @@ int demo_parse(Demo* demo) {
         {
             size_t byte_size;
             msg->data = malloc_s(sizeof(CmdInfo));
-            parse_cmd_info((CmdInfo*)msg->data, bits);
+            if (!quick_mode) {
+                parse_cmd_info((CmdInfo*)msg->data, bits);
+            }
+            else {
+                // PacketInfo(76)
+                bits->current += 76 << 3;
+            }
+            // InSequence(4) + OutSequence(4)
             bits->current += 8 << 3;
             byte_size = bits_read_le_u32(bits);
             bits->current += byte_size << 3;
@@ -156,16 +159,32 @@ int demo_parse(Demo* demo) {
         case CONSOLECMD:
         {
             size_t byte_size = bits_read_le_u32(bits);
-            msg->data = malloc_s(byte_size);
-            bits_read_bytes((char*)msg->data, byte_size, bits);
+            if (!quick_mode) {
+                msg->data = malloc_s(byte_size);
+                bits_read_bytes((char*)msg->data, byte_size, bits);
+            }
+            else {
+                bits->current += byte_size << 3;
+            }
         }
 
         break;
 
         case USERCMD:
-            msg->data = malloc_s(sizeof(UserCmd));
-            parse_usercmd((UserCmd*)msg->data, bits);
+        {
+            uint32_t cmd = bits_read_le_u32(bits);
+            size_t byte_size = bits_read_le_u32(bits);
+            size_t end_index = bits->current + (byte_size << 3);
+            if (!quick_mode) {
+                msg->data = malloc_s(sizeof(UserCmd));
+                ((UserCmd*)msg->data)->cmd = cmd;
+                parse_usercmd((UserCmd*)msg->data, bits);
+                if (bits->current > end_index)
+                    fprintf(stderr, "[WARNING] Usercmd not parse correctly.\n");
+            }
+            bits->current = end_index;
             break;
+        }
 
         case DATA_TABLES:
         {
