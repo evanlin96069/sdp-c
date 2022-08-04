@@ -9,7 +9,7 @@ Support Portal 1 3420, 5135 (probably also HL2).
 ## Building
 
 ```bash
-make
+./compile.sh
 ```
 
 ## Usage
