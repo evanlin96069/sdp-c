@@ -88,7 +88,7 @@ typedef struct {
     uint16_t mouse_dy;
 } UserCmd;
 
-Demo* new_demo();
+Demo* new_demo(char* path);
 int demo_parse(Demo* demo);
 void demo_print_header(const Demo* demo, FILE* fp);
 void demo_verbose(const Demo* demo, FILE* fp);
