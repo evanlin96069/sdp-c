@@ -3,13 +3,13 @@
 #include "bits.h"
 #include "alloc.h"
 
-BitStream* bits_init(size_t byte_size, uint8_t* data) {
+BitStream* bits_init(uint8_t* data, size_t byte_size) {
     BitStream* bits = malloc_s(sizeof(BitStream));
-    bits->bit_size = byte_size << 3;
     // make sure it's multiple of 8 bytes
     size_t real_byte_size = byte_size + 8 - (byte_size & 0x7);
     bits->bits = malloc_s(real_byte_size);
     bits->byte_size = real_byte_size;
+    bits->bit_size = byte_size << 3;
     memcpy(bits->bits, data, byte_size);
     bits->current = 0;
     bits_fetch(bits);
@@ -99,8 +99,7 @@ size_t bits_read_bytes(char* buf, size_t len, BitStream* bits) {
 }
 
 size_t bits_read_str(char* dest, size_t max_bytes, BitStream* bits) {
-    if (!max_bytes)
-        return 0;
+    if (!max_bytes) return 0;
 
     uint8_t n;
     size_t len = 0;

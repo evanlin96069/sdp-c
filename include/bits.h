@@ -13,7 +13,7 @@ typedef struct {
     uint8_t* bits;
 } BitStream;
 
-BitStream* bits_init(size_t byte_size, uint8_t* data);
+BitStream* bits_init(uint8_t* data, size_t byte_size);
 BitStream* bits_init_file(size_t byte_size, FILE* fp);
 
 void bits_skip(size_t bit_num, BitStream* bits);

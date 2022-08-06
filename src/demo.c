@@ -132,8 +132,9 @@ int demo_parse(Demo* demo, bool quick_mode) {
         }
         msg->tick = tick;
 
-        if (tick >= 0 && tick > measured_ticks)
+        if (tick >= 0 && tick > measured_ticks) {
             measured_ticks = tick;
+        }
 
         switch (type) {
         case SIGN_ON:
@@ -179,7 +180,6 @@ int demo_parse(Demo* demo, bool quick_mode) {
                 bits_skip(byte_size << 3, bits);
             }
         }
-
         break;
 
         case USERCMD:
@@ -191,19 +191,19 @@ int demo_parse(Demo* demo, bool quick_mode) {
                 msg->data = malloc_s(sizeof(UserCmd));
                 ((UserCmd*)msg->data)->cmd = cmd;
                 parse_usercmd((UserCmd*)msg->data, bits);
-                if (bits->current > end_index)
+                if (bits->current > end_index) {
                     fprintf(stderr, "[WARNING] Usercmd not parse correctly.\n");
+                }
             }
             bits->current = end_index;
             bits_fetch(bits);
-            break;
         }
+        break;
 
         case DATA_TABLES:
         {
             uint32_t byte_size = bits_read_le_u32(bits);
             bits_skip(byte_size << 3, bits);
-            break;
         }
         break;
 
@@ -216,7 +216,6 @@ int demo_parse(Demo* demo, bool quick_mode) {
         {
             size_t byte_size = bits_read_le_u32(bits);
             bits_skip(byte_size << 3, bits);
-            break;
         }
         break;
 
@@ -298,16 +297,14 @@ static void print_cmd_info(const CmdInfo* info, FILE* fp) {
 }
 
 void demo_verbose(const Demo* demo, FILE* fp) {
-    if (!demo)
-        return;
+    if (!demo) return;
 
     fprintf(fp, "FileName: %s\n\n", demo->file_name);
 
     print_header(demo, fp);
     fprintf(fp, "\n");
 
-    if (!demo->messages)
-        return;
+    if (!demo->messages) return;
 
     for (DemoMessage* msg = demo->messages; msg; msg = msg->next) {
         int type = msg->type;

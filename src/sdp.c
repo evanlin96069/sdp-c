@@ -4,16 +4,17 @@
 
 #include "demo.h"
 
+enum {
+    QUICK_MODE,
+    VERBOSE_MODE,
+    TAS_MODE
+};
+
 int main(int argc, char* argv[]) {
     if (argc < 2) {
         printf("Usage: sdp [options] <demo>\n");
     }
 
-    enum {
-        QUICK_MODE,
-        VERBOSE_MODE,
-        TAS_MODE
-    };
     char* input_file = NULL;
     char* output_file = NULL;
     int mode = QUICK_MODE;
