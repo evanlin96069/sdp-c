@@ -14,7 +14,7 @@ typedef struct {
 } BitStream;
 
 BitStream* bits_init(uint8_t* data, size_t byte_size);
-BitStream* bits_init_file(size_t byte_size, FILE* fp);
+BitStream* bits_load_file(char* path);
 
 void bits_skip(size_t bit_num, BitStream* bits);
 void bits_fetch(BitStream* bits);

@@ -16,7 +16,17 @@ BitStream* bits_init(uint8_t* data, size_t byte_size) {
     return bits;
 }
 
-BitStream* bits_init_file(size_t byte_size, FILE* fp) {
+BitStream* bits_load_file(char* path) {
+    FILE* fp = fopen(path, "rb");
+    if (!fp) {
+        return NULL;
+    }
+
+    size_t byte_size;
+    fseek(fp, 0L, SEEK_END);
+    byte_size = ftell(fp);
+    fseek(fp, 0L, SEEK_SET);
+
     BitStream* bits = malloc_s(sizeof(BitStream));
     // make sure it's multiple of 8 bytes
     size_t real_byte_size = byte_size + 8 - (byte_size & 0x7);
@@ -25,6 +35,8 @@ BitStream* bits_init_file(size_t byte_size, FILE* fp) {
     bits->bit_size = fread(bits->bits, 1, byte_size, fp) << 3;
     bits->current = 0;
     bits_fetch(bits);
+
+    fclose(fp);
     return bits;
 }
 

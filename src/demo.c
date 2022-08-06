@@ -92,18 +92,11 @@ static void parse_usercmd(UserCmd* cmd, BitStream* bits) {
 }
 
 int demo_parse(Demo* demo, bool quick_mode) {
-    FILE* fp = fopen(demo->path, "rb");
-    if (!fp) {
+    BitStream* bits = bits_load_file(demo->path);
+    if (!bits) {
         fprintf(stderr, "[ERROR] Cannot open file %s.\n", demo->path);
         return -1;
     }
-    size_t file_size;
-    fseek(fp, 0L, SEEK_END);
-    file_size = ftell(fp);
-    fseek(fp, 0L, SEEK_SET);
-
-    BitStream* bits = bits_init_file(file_size, fp);
-    fclose(fp);
 
     int measured_ticks = 0;
 
