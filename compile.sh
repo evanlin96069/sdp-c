@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh -e
 
 CC=gcc
 
@@ -8,7 +8,7 @@ mkdir -p obj
 dbg=0
 
 if [ $dbg = 1 ]; then
-	cflags="-g -Wall -Wextra -pedantic -std=c99"
+	cflags="-g3 -Wall -Wextra -pedantic -std=c99"
 else
 	cflags="-O1 -Wall -Wextra -pedantic -std=c99"
 fi
