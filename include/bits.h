@@ -6,11 +6,19 @@
 
 typedef struct {
     size_t bit_size;
+    size_t byte_size;
     size_t current;
+    uint64_t fetch;
+    uint8_t offset;
     uint8_t* bits;
 } BitStream;
 
-BitStream* bits_init(size_t byte_size, FILE* fp);
+BitStream* bits_init(size_t byte_size, uint8_t* data);
+BitStream* bits_init_file(size_t byte_size, FILE* fp);
+
+void bits_skip(size_t bit_num, BitStream* bits);
+void bits_fetch(BitStream* bits);
+
 int bits_read_one_bit(BitStream* bits);
 uint8_t bits_read_le_u8(BitStream* bits);
 uint16_t bits_read_le_u16(BitStream* bits);

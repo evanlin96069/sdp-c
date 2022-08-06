@@ -102,7 +102,7 @@ int demo_parse(Demo* demo, bool quick_mode) {
     file_size = ftell(fp);
     fseek(fp, 0L, SEEK_SET);
 
-    BitStream* bits = bits_init(file_size, fp);
+    BitStream* bits = bits_init_file(file_size, fp);
     fclose(fp);
 
     int measured_ticks = 0;
@@ -113,13 +113,25 @@ int demo_parse(Demo* demo, bool quick_mode) {
     parse_header(demo, bits);
 
     bool stop_reading = false;
+    int count = 0;
     while (!stop_reading) {
+        count++;
         DemoMessage* msg = malloc_s(sizeof(DemoMessage));
         msg->next = NULL;
         msg->data = NULL;
 
         int type = msg->type = bits_read_le_u8(bits);
-        int tick = msg->tick = bits_read_le_u32(bits);
+        // Last byte is cut off in demos, use the previous byte
+        int tick;
+        if (bits->bit_size - bits->current >= 32) {
+            tick = bits_read_le_u32(bits);
+        }
+        else {
+            tick = bits_read_bits(24, bits);
+            tick |= (tick << 8) & (0xff << 24);
+        }
+        msg->tick = tick;
+
         if (tick >= 0 && tick > measured_ticks)
             measured_ticks = tick;
 
@@ -128,11 +140,11 @@ int demo_parse(Demo* demo, bool quick_mode) {
         {
             size_t byte_size;
             // PacketInfo(76)
-            bits->current += 76 << 3;
+            bits_skip(76 << 3, bits);
             // InSequence(4) + OutSequence(4)
-            bits->current += 8 << 3;
+            bits_skip(8 << 3, bits);
             byte_size = bits_read_le_u32(bits);
-            bits->current += byte_size << 3;
+            bits_skip(byte_size << 3, bits);
         }
         break;
         case PACKET:
@@ -144,12 +156,12 @@ int demo_parse(Demo* demo, bool quick_mode) {
             }
             else {
                 // PacketInfo(76)
-                bits->current += 76 << 3;
+                bits_skip(76 << 3, bits);
             }
             // InSequence(4) + OutSequence(4)
-            bits->current += 8 << 3;
+            bits_skip(8 << 3, bits);
             byte_size = bits_read_le_u32(bits);
-            bits->current += byte_size << 3;
+            bits_skip(byte_size << 3, bits);
         }
         break;
 
@@ -164,7 +176,7 @@ int demo_parse(Demo* demo, bool quick_mode) {
                 bits_read_bytes((char*)msg->data, byte_size, bits);
             }
             else {
-                bits->current += byte_size << 3;
+                bits_skip(byte_size << 3, bits);
             }
         }
 
@@ -183,13 +195,14 @@ int demo_parse(Demo* demo, bool quick_mode) {
                     fprintf(stderr, "[WARNING] Usercmd not parse correctly.\n");
             }
             bits->current = end_index;
+            bits_fetch(bits);
             break;
         }
 
         case DATA_TABLES:
         {
             uint32_t byte_size = bits_read_le_u32(bits);
-            bits->current += byte_size << 3;
+            bits_skip(byte_size << 3, bits);
             break;
         }
         break;
@@ -201,14 +214,14 @@ int demo_parse(Demo* demo, bool quick_mode) {
 
         case STRING_TABLES:
         {
-            size_t size = bits_read_le_u32(bits);
-            bits->current += size << 3;
+            size_t byte_size = bits_read_le_u32(bits);
+            bits_skip(byte_size << 3, bits);
             break;
         }
         break;
 
         default:
-            fprintf(stderr, "[ERROR] Unexpected message type %d.\n", type);
+            fprintf(stderr, "[ERROR] Unexpected type %d at message %d.\n", type, count);
             stop_reading = true;
         }
 
