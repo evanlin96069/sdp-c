@@ -2,6 +2,7 @@
 #include <string.h>
 #include "bits.h"
 #include "alloc.h"
+#include "vector.h"
 
 BitStream* bits_init(uint8_t* data, size_t byte_size) {
     BitStream* bits = malloc_s(sizeof(BitStream));
@@ -110,22 +111,14 @@ size_t bits_read_bytes(char* buf, size_t len, BitStream* bits) {
     return i;
 }
 
-#define BITS_DEFAULT_STR_SIZE 4
-#define BITS_STR_EXTEND_RATE 2
 char* bits_read_str(BitStream* bits) {
-    char* str = malloc_s(BITS_DEFAULT_STR_SIZE);
-    size_t max_size = BITS_DEFAULT_STR_SIZE;
-    size_t len = 0;
-
+    VECTOR(char) str = { 0 };
     uint8_t n;
     do {
-        if (len >= max_size) {
-            str = realloc_s(str, max_size * BITS_STR_EXTEND_RATE);
-        }
-        n = str[len] = bits_read_le_u8(bits);
-        len++;
+        n = bits_read_le_u8(bits);
+        vector_push(str, n);
     } while (n);
-    return realloc_s(str, len);
+    return str.data;
 }
 
 void bits_free(BitStream* bits) {
