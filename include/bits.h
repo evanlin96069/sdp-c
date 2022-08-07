@@ -27,7 +27,7 @@ float bits_read_le_f32(BitStream* bits);
 uint32_t bits_read_bits(size_t bit_size, BitStream* bits);
 
 size_t bits_read_bytes(char* buf, size_t len, BitStream* bits);
-size_t bits_read_str(char* dest, size_t max_bytes, BitStream* bits);
+char* bits_read_str(BitStream* bits);
 
 void bits_free(BitStream* bits);
 

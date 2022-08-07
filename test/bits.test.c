@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include "minunit.h"
 #include "../include/bits.h"
@@ -56,11 +57,11 @@ static char* test_read_bytes() {
 
 static char* test_read_str() {
     char data[32] = "Portal";
-    char buffer[32];
     BitStream* bits = bits_init((uint8_t*)data, sizeof(data));
-    bits_read_str(buffer, 32, bits);
-    mu_assert("[FAILED] bits_read_bytes", strcmp(buffer, "Portal") == 0);
+    char* str = bits_read_str(bits);
+    mu_assert("[FAILED] bits_read_bytes", strcmp(str, "Portal") == 0);
     bits_free(bits);
+    free(str);
     return 0;
 }
 

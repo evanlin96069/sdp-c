@@ -110,16 +110,22 @@ size_t bits_read_bytes(char* buf, size_t len, BitStream* bits) {
     return i;
 }
 
-size_t bits_read_str(char* dest, size_t max_bytes, BitStream* bits) {
-    if (!max_bytes) return 0;
+#define BITS_DEFAULT_STR_SIZE 4
+#define BITS_STR_EXTEND_RATE 2
+char* bits_read_str(BitStream* bits) {
+    char* str = malloc_s(BITS_DEFAULT_STR_SIZE);
+    size_t max_size = BITS_DEFAULT_STR_SIZE;
+    size_t len = 0;
 
     uint8_t n;
-    size_t len = 0;
     do {
-        n = dest[len] = bits_read_le_u8(bits);
+        if (len >= max_size) {
+            str = realloc_s(str, max_size * BITS_STR_EXTEND_RATE);
+        }
+        n = str[len] = bits_read_le_u8(bits);
         len++;
-    } while (n && len < max_bytes);
-    return len;
+    } while (n);
+    return realloc_s(str, len);
 }
 
 void bits_free(BitStream* bits) {
