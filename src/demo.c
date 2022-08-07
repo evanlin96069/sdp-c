@@ -1,8 +1,7 @@
-#include "demo.h"
-
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
+#include "demo.h"
 #include "bits.h"
 #include "alloc.h"
 
@@ -52,7 +51,7 @@ static void parse_cmd_info(CmdInfo* info, BitStream* bits) {
     info->local_view_angles2[2] = bits_read_le_f32(bits);
 }
 
-static void parse_usercmd(UserCmd* cmd, BitStream* bits) {
+static void parse_usercmd(UserCmdInfo* cmd, BitStream* bits) {
     if ((cmd->has_command_number = bits_read_one_bit(bits)))
         cmd->command_number = bits_read_le_u32(bits);
 
@@ -91,6 +90,12 @@ static void parse_usercmd(UserCmd* cmd, BitStream* bits) {
         cmd->mouse_dy = bits_read_le_u16(bits);
 }
 
+/*
+static void parse_data_tables(BitStream* bits) {
+
+}
+*/
+
 int demo_parse(Demo* demo, bool quick_mode) {
     BitStream* bits = bits_load_file(demo->path);
     if (!bits) {
@@ -111,7 +116,6 @@ int demo_parse(Demo* demo, bool quick_mode) {
         count++;
         DemoMessage* msg = malloc_s(sizeof(DemoMessage));
         msg->next = NULL;
-        msg->data = NULL;
 
         int type = msg->type = bits_read_le_u8(bits);
         // Last byte is cut off in demos, use the previous byte
@@ -133,29 +137,31 @@ int demo_parse(Demo* demo, bool quick_mode) {
         case SIGN_ON:
         {
             size_t byte_size;
-            // PacketInfo(76)
-            bits_skip(76 << 3, bits);
-            // InSequence(4) + OutSequence(4)
-            bits_skip(8 << 3, bits);
+            // PacketInfo(76) + InSequence(4) + OutSequence(4)
+            bits_skip(84 << 3, bits);
             byte_size = bits_read_le_u32(bits);
             bits_skip(byte_size << 3, bits);
         }
         break;
         case PACKET:
         {
-            size_t byte_size;
-            msg->data = malloc_s(sizeof(CmdInfo));
             if (!quick_mode) {
-                parse_cmd_info((CmdInfo*)msg->data, bits);
+                parse_cmd_info(&msg->data.packet.packet_info, bits);
+                msg->data.packet.in_sequence = bits_read_le_u32(bits);
+                msg->data.packet.out_sequence = bits_read_le_u32(bits);
             }
             else {
-                // PacketInfo(76)
-                bits_skip(76 << 3, bits);
+                // PacketInfo(76) + InSequence(4) + OutSequence(4)
+                bits_skip(84 << 3, bits);
             }
-            // InSequence(4) + OutSequence(4)
-            bits_skip(8 << 3, bits);
-            byte_size = bits_read_le_u32(bits);
-            bits_skip(byte_size << 3, bits);
+            size_t byte_size = msg->data.packet.size = bits_read_le_u32(bits);
+            size_t end_index = bits->current + (byte_size << 3);
+            if (quick_mode) {
+                // not implement
+                bits_skip(byte_size << 3, bits);
+            }
+            bits->current = end_index;
+            bits_fetch(bits);
         }
         break;
 
@@ -165,13 +171,14 @@ int demo_parse(Demo* demo, bool quick_mode) {
         case CONSOLECMD:
         {
             size_t byte_size = bits_read_le_u32(bits);
+            size_t end_index = bits->current + (byte_size << 3);
             if (!quick_mode) {
-                msg->data = malloc_s(byte_size);
-                bits_read_bytes((char*)msg->data, byte_size, bits);
+                msg->data.console_cmd.size = byte_size;
+                msg->data.console_cmd.data = malloc_s(byte_size);
+                bits_read_bytes(msg->data.console_cmd.data, byte_size, bits);
             }
-            else {
-                bits_skip(byte_size << 3, bits);
-            }
+            bits->current = end_index;
+            bits_fetch(bits);
         }
         break;
 
@@ -181,9 +188,9 @@ int demo_parse(Demo* demo, bool quick_mode) {
             size_t byte_size = bits_read_le_u32(bits);
             size_t end_index = bits->current + (byte_size << 3);
             if (!quick_mode) {
-                msg->data = malloc_s(sizeof(UserCmd));
-                ((UserCmd*)msg->data)->cmd = cmd;
-                parse_usercmd((UserCmd*)msg->data, bits);
+                msg->data.user_cmd.cmd = cmd;
+                msg->data.user_cmd.size = byte_size;
+                parse_usercmd(&msg->data.user_cmd.data, bits);
                 if (bits->current > end_index) {
                     fprintf(stderr, "[WARNING] Usercmd not parse correctly.\n");
                 }
@@ -196,7 +203,14 @@ int demo_parse(Demo* demo, bool quick_mode) {
         case DATA_TABLES:
         {
             uint32_t byte_size = bits_read_le_u32(bits);
-            bits_skip(byte_size << 3, bits);
+            size_t end_index = bits->current + (byte_size << 3);
+            if (!quick_mode) {
+                // not implement
+                msg->data.data_tables.size = byte_size;
+                bits_skip(byte_size << 3, bits);
+            }
+            bits->current = end_index;
+            bits_fetch(bits);
         }
         break;
 
@@ -207,8 +221,15 @@ int demo_parse(Demo* demo, bool quick_mode) {
 
         case STRING_TABLES:
         {
-            size_t byte_size = bits_read_le_u32(bits);
-            bits_skip(byte_size << 3, bits);
+            uint32_t byte_size = bits_read_le_u32(bits);
+            size_t end_index = bits->current + (byte_size << 3);
+            if (!quick_mode) {
+                // not implement
+                msg->data.string_tables.size = byte_size;
+                bits_skip(byte_size << 3, bits);
+            }
+            bits->current = end_index;
+            bits_fetch(bits);
         }
         break;
 
@@ -245,9 +266,8 @@ static void print_header(const Demo* demo, FILE* fp) {
     fprintf(fp, "SignOnLength: %d\n", header->sign_on_length);
 }
 
-static void print_usercmd(const UserCmd* cmd, FILE* fp) {
+static void print_usercmd(const UserCmdInfo* cmd, FILE* fp) {
     fprintf(fp, "UserCmd\n");
-    fprintf(fp, "\tCmd: %d\n", cmd->cmd);
     if (cmd->has_command_number)
         fprintf(fp, "\tCommandNumber: %d\n", cmd->command_number);
     if (cmd->has_tick_count)
@@ -308,17 +328,17 @@ void demo_verbose(const Demo* demo, FILE* fp) {
             break;
         case PACKET:
             fprintf(fp, "Packet\n");
-            print_cmd_info((CmdInfo*)msg->data, fp);
+            print_cmd_info(&msg->data.packet.packet_info, fp);
             break;
         case SYNC_TICK:
             fprintf(fp, "SyncTick\n");
             break;
         case CONSOLECMD:
             fprintf(fp, "ConsoleCmd\n");
-            fprintf(fp, "\tData: %s\n", (char*)msg->data);
+            fprintf(fp, "\tData: %s\n", (char*)msg->data.console_cmd.data);
             break;
         case USERCMD:
-            print_usercmd((UserCmd*)msg->data, fp);
+            print_usercmd(&msg->data.user_cmd.data, fp);
             break;
         case DATA_TABLES:
             fprintf(fp, "DataTables\n");
@@ -344,11 +364,11 @@ void demo_gen_tas_script(const Demo* demo, FILE* fp) {
                 break;
             }
             if (type == CONSOLECMD) {
-                char* command = (char*)msg->data;
+                char* command = (char*)msg->data.console_cmd.data;
                 fprintf(fp, "_y_spt_afterframes %d \"%s;\";\n", tick, command);
             }
             else if (type == USERCMD) {
-                UserCmd* cmd = (UserCmd*)msg->data;
+                const UserCmdInfo* cmd = &msg->data.user_cmd.data;
                 fprintf(fp, "_y_spt_afterframes %d \"_y_spt_setangles %.8f %.8f;\";\n", tick, cmd->view_angles_x, cmd->view_angles_y);
             }
         }
@@ -359,8 +379,15 @@ void demo_free(Demo* demo) {
     if (!demo) return;
     DemoMessage* msg = demo->messages;
     while (msg) {
-        if (msg->data)
-            free(msg->data);
+        switch (msg->type)
+        {
+        case CONSOLECMD:
+            free(msg->data.console_cmd.data);
+            break;
+
+        default:
+            break;
+        }
         DemoMessage* tmp = msg;
         msg = msg->next;
         free(tmp);
