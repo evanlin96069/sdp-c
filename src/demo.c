@@ -5,6 +5,8 @@
 #include "bits.h"
 #include "alloc.h"
 
+GameState game_info;
+
 Demo* new_demo(char* path) {
     Demo* demo = malloc_s(sizeof(Demo));
     char* file_name = strrchr(path, '/');

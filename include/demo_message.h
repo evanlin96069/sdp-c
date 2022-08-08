@@ -1,11 +1,11 @@
 #ifndef DEMO_MESSAGE_H
 #define DEMO_MESSAGE_H
 
-#include <stddef.h>
 #include <stdint.h>
 #include <stdbool.h>
+#include "net_message.h"
 
-enum {
+enum DemoMessageType {
     SIGN_ON = 1,
     PACKET,
     SYNC_TICK,
@@ -30,13 +30,12 @@ typedef struct {
     CmdInfo packet_info;
     uint32_t in_sequence;
     uint32_t out_sequence;
-    size_t size;
-    // NET/SVC-Message[]
-    void* data;
+    uint32_t size;
+    NetSvcMessage* data;
 } Packet;
 
 typedef struct {
-    size_t size;
+    uint32_t size;
     char* data;
 } ConsoleCmd;
 
@@ -74,7 +73,7 @@ typedef struct {
 
 typedef struct {
     uint32_t cmd;
-    size_t size;
+    uint32_t size;
     UserCmdInfo data;
 } UserCmd;
 
@@ -95,32 +94,39 @@ typedef struct {
 } ServerClassInfo;
 
 typedef struct {
-    size_t size;
+    uint32_t size;
     SendTable* send_table;
     ServerClassInfo* server_class_info;
 } DataTables;
 
 typedef struct {
+    bool has_entry_size;
+    bool has_entry_data;
+    bool has_num_of_client_entries;
+    bool has_client_entry_name;
+    bool has_client_entry_size;
+    bool has_client_entry_data;
+
     uint32_t num_of_tables;
     char* table_name;
     uint16_t num_of_entries;
     char* entry_name;
     uint16_t entry_size;
-    void* entry_data;
+    uint8_t* entry_data;
     uint16_t num_of_client_entries;
     char* client_entry_name;
     uint16_t client_entry_size;
-    void* client_entry_data;
+    uint8_t* client_entry_data;
 } StringTable;
 
 typedef struct {
-    size_t size;
+    uint32_t size;
     StringTable* data;
 } StringTables;
 
 typedef struct _DemoMessage DemoMessage;
 struct _DemoMessage {
-    uint8_t type;
+    enum DemoMessageType type;
     int32_t tick;
     union {
         Packet packet;
@@ -131,5 +137,12 @@ struct _DemoMessage {
     } data;
     DemoMessage* next;
 };
+
+typedef struct {
+    uint32_t demo_protocol;
+    GameEventDescriptor game_event_descriptor;
+} GameState;
+
+extern GameState game_info;
 
 #endif

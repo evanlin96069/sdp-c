@@ -20,7 +20,8 @@ rm -f obj/*.o
 src="\
 	alloc.c
 	bits.c
-	demo.c"
+	demo.c
+	net_message.c"
 for i in $src; do
 	$CC src/$i -Iinclude $cflags -c -o obj/${i%.c}.o
 done
