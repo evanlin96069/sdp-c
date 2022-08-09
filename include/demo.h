@@ -21,7 +21,7 @@ typedef struct {
     char* path;
     char* file_name;
     DemoHeader header;
-    DemoMessage* messages;
+    VECTOR(DemoMessage) messages;
 } Demo;
 
 Demo* new_demo(char* path);

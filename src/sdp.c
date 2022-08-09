@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "demo.h"
+#include "demo_info.h"
 
 int get_build_number();
 
@@ -102,7 +103,7 @@ int main(int argc, char* argv[]) {
         printf("PlayBackFrames:     %d\n", header->play_back_frames);
         printf("SignOnLength:       %d\n\n", header->sign_on_length);
         printf("Measured ticks:     %d\n", measured_ticks);
-        printf("Measured time:      %.3f\n", measured_ticks / 66.6666f);
+        printf("Measured time:      %.3f\n", measured_ticks / demo_info.tickrate);
     }
     else if (mode == VERBOSE_MODE) {
         printf("[INFO] Dumping verbose output...\n");

@@ -118,6 +118,7 @@ char* bits_read_str(BitStream* bits) {
         n = bits_read_le_u8(bits);
         vector_push(str, n);
     } while (n);
+    vector_shrink(str);
     return str.data;
 }
 

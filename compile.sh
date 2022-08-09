@@ -8,9 +8,9 @@ mkdir -p obj
 dbg=0
 
 if [ $dbg = 1 ]; then
-	cflags="-g3 -Wall -Wextra -pedantic -std=c99"
+	cflags="-Wall -Wextra -pedantic -std=c99 -Wno-unused-parameter -g3"
 else
-	cflags="-O1 -Wall -Wextra -pedantic -std=c99"
+	cflags="-Wall -Wextra -pedantic -std=c99 -Wno-unused-parameter -O1"
 fi
 
 # clean up obj
@@ -21,6 +21,7 @@ src="\
 	alloc.c
 	bits.c
 	demo.c
+	demo_message.c
 	net_message.c"
 for i in $src; do
 	$CC src/$i -Iinclude $cflags -c -o obj/${i%.c}.o

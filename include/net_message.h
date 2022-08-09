@@ -1,95 +1,124 @@
 #ifndef NET_MESSAGES_H
 #define NET_MESSAGES_H
 
-#include <stdio.h>
-#include <stdint.h>
 #include <stdbool.h>
 #include "bits.h"
 
-#define MACRO_NE_MESSAGES(macro)    \
-macro(NetNop)                       \
-macro(NetDisconnect)                \
-macro(NetFile)                      \
-macro(NetSplitScreenUser)           \
-macro(NetTick)                      \
-macro(NetStringCmd)                 \
-macro(NetSetConVar)                 \
-macro(NetSignonState)               \
-macro(SvcServerInfo)                \
-macro(SvcSendTable)                 \
-macro(SvcClassInfo)                 \
-macro(SvcSetPause)                  \
-macro(SvcCreateStringTable)         \
-macro(SvcUpdateStringTable)         \
-macro(SvcVoiceInit)                 \
-macro(SvcVoiceData)                 \
-macro(SvcPrint)                     \
-macro(SvcSounds)                    \
-macro(SvcSetView)                   \
-macro(SvcFixAngle)                  \
-macro(SvcCrosshairAngle)            \
-macro(SvcBspDecal)                  \
-macro(SvcSplitScreen)               \
-macro(SvcUserMessage)               \
-macro(SvcEntityMessage)             \
-macro(SvcGameEvent)                 \
-macro(SvcPacketEntities)            \
-macro(SvcTempEntities)              \
-macro(SvcPrefetch)                  \
-macro(SvcMenu)                      \
-macro(SvcGameEventList)             \
-macro(SvcGetCvarValue)              \
-macro(SvcCmdKeyValues)              \
+#define MACRO_ALL_NET_MESSAGES(macro)   \
+macro(NetNop)                           \
+macro(NetDisconnect)                    \
+macro(NetFile)                          \
+macro(NetSplitScreenUser)               \
+macro(NetTick)                          \
+macro(NetStringCmd)                     \
+macro(NetSetConVar)                     \
+macro(NetSignonState)                   \
+macro(SvcServerInfo)                    \
+macro(SvcSendTable)                     \
+macro(SvcClassInfo)                     \
+macro(SvcSetPause)                      \
+macro(SvcCreateStringTable)             \
+macro(SvcUpdateStringTable)             \
+macro(SvcVoiceInit)                     \
+macro(SvcVoiceData)                     \
+macro(SvcPrint)                         \
+macro(SvcSounds)                        \
+macro(SvcSetView)                       \
+macro(SvcFixAngle)                      \
+macro(SvcCrosshairAngle)                \
+macro(SvcBspDecal)                      \
+macro(SvcSplitScreen)                   \
+macro(SvcUserMessage)                   \
+macro(SvcEntityMessage)                 \
+macro(SvcGameEvent)                     \
+macro(SvcPacketEntities)                \
+macro(SvcTempEntities)                  \
+macro(SvcPrefetch)                      \
+macro(SvcMenu)                          \
+macro(SvcGameEventList)                 \
+macro(SvcGetCvarValue)                  \
+macro(SvcCmdKeyValues)                  \
 macro(SvcPaintmapData)
 
-#define MACRO_OE_MESSAGES(macro)    \
-macro(NetNop)                       \
-macro(NetDisconnect)                \
-macro(NetFile)                      \
-macro(NetTick)                      \
-macro(NetStringCmd)                 \
-macro(NetSetConVar)                 \
-macro(NetSignonState)               \
-macro(SvcPrint)                     \
-macro(SvcServerInfo)                \
-macro(SvcSendTable)                 \
-macro(SvcClassInfo)                 \
-macro(SvcSetPause)                  \
-macro(SvcCreateStringTable)         \
-macro(SvcUpdateStringTable)         \
-macro(SvcVoiceInit)                 \
-macro(SvcVoiceData)                 \
-macro(Invalid1)                     \
-macro(SvcSounds)                    \
-macro(SvcSetView)                   \
-macro(SvcFixAngle)                  \
-macro(SvcCrosshairAngle)            \
-macro(SvcBspDecal)                  \
-macro(Invalid2)                     \
-macro(SvcUserMessage)               \
-macro(SvcEntityMessage)             \
-macro(SvcGameEvent)                 \
-macro(SvcPacketEntities)            \
-macro(SvcTempEntities)              \
-macro(SvcPrefetch)                  \
-macro(SvcMenu)                      \
-macro(SvcGameEventList)             \
-macro(SvcGetCvarValue)              \
+#define MACRO_OE_NET_MESSAGES(macro)    \
+macro(NetNop)                           \
+macro(NetDisconnect)                    \
+macro(NetFile)                          \
+macro(NetTick)                          \
+macro(NetStringCmd)                     \
+macro(NetSetConVar)                     \
+macro(NetSignonState)                   \
+macro(SvcPrint)                         \
+macro(SvcServerInfo)                    \
+macro(SvcSendTable)                     \
+macro(SvcClassInfo)                     \
+macro(SvcSetPause)                      \
+macro(SvcCreateStringTable)             \
+macro(SvcUpdateStringTable)             \
+macro(SvcVoiceInit)                     \
+macro(SvcVoiceData)                     \
+macro(NetInvalid)                       \
+macro(SvcSounds)                        \
+macro(SvcSetView)                       \
+macro(SvcFixAngle)                      \
+macro(SvcCrosshairAngle)                \
+macro(SvcBspDecal)                      \
+macro(NetInvalid)                       \
+macro(SvcUserMessage)                   \
+macro(SvcEntityMessage)                 \
+macro(SvcGameEvent)                     \
+macro(SvcPacketEntities)                \
+macro(SvcTempEntities)                  \
+macro(SvcPrefetch)                      \
+macro(SvcMenu)                          \
+macro(SvcGameEventList)                 \
+macro(SvcGetCvarValue)                  \
 macro(SvcCmdKeyValues)
+
+#define MACRO_NE_NET_MESSAGES(macro)    \
+macro(NetNop)                           \
+macro(NetDisconnect)                    \
+macro(NetFile)                          \
+macro(NetSplitScreenUser)               \
+macro(NetTick)                          \
+macro(NetStringCmd)                     \
+macro(NetSetConVar)                     \
+macro(NetSignonState)                   \
+macro(SvcServerInfo)                    \
+macro(SvcSendTable)                     \
+macro(SvcClassInfo)                     \
+macro(SvcSetPause)                      \
+macro(SvcCreateStringTable)             \
+macro(SvcUpdateStringTable)             \
+macro(SvcVoiceInit)                     \
+macro(SvcVoiceData)                     \
+macro(SvcPrint)                         \
+macro(SvcSounds)                        \
+macro(SvcSetView)                       \
+macro(SvcFixAngle)                      \
+macro(SvcCrosshairAngle)                \
+macro(SvcBspDecal)                      \
+macro(SvcSplitScreen)                   \
+macro(SvcUserMessage)                   \
+macro(SvcEntityMessage)                 \
+macro(SvcGameEvent)                     \
+macro(SvcPacketEntities)                \
+macro(SvcTempEntities)                  \
+macro(SvcPrefetch)                      \
+macro(SvcMenu)                          \
+macro(SvcGameEventList)                 \
+macro(SvcGetCvarValue)                  \
+macro(SvcCmdKeyValues)                  \
+macro(SvcPaintmapData)
 
 typedef uint8_t NetSvcMessageType;
 
-#define DECL_OE_MSG_IN_ENUM(x) OE_ ## x,
-enum {
-    MACRO_OE_MESSAGES(DECL_OE_MSG_IN_ENUM)
-    OE_MSG_COUNT
-};
-
-#define DECL_NE_MSG_IN_ENUM(x) NE_ ## x,
-enum {
-    MACRO_NE_MESSAGES(DECL_NE_MSG_IN_ENUM)
-    NE_MSG_COUNT
-};
+#define DECL_MSG_IN_ENUM(x) x ## _MSG,
+typedef enum {
+    NetInvalid_MSG = -1,
+    MACRO_ALL_NET_MESSAGES(DECL_MSG_IN_ENUM)
+    NET_MSG_COUNT
+} NetSvcMessageID;
 
 typedef struct _NetSvcMessage NetSvcMessage;
 
@@ -97,13 +126,22 @@ typedef void (*ParseNetSvcMsgFunc)(NetSvcMessage* msg, BitStream* bits);
 typedef void (*PrintNetSvcMsgFunc)(const NetSvcMessage* msg, FILE* fp);
 typedef void (*FreeNetSvcMsgFunc)(NetSvcMessage* msg);
 
-extern ParseNetSvcMsgFunc parse_oe_net_msg_func[OE_MSG_COUNT];
-extern PrintNetSvcMsgFunc print_oe_net_msg_func[OE_MSG_COUNT];
-extern FreeNetSvcMsgFunc free_oe_net_msg_func[OE_MSG_COUNT];
+typedef struct {
+    ParseNetSvcMsgFunc parse;
+    PrintNetSvcMsgFunc print;
+    FreeNetSvcMsgFunc free;
+} NetSvcMessageTable;
 
-extern ParseNetSvcMsgFunc parse_ne_net_msg_func[NE_MSG_COUNT];
-extern PrintNetSvcMsgFunc print_ne_net_msg_func[NE_MSG_COUNT];
-extern FreeNetSvcMsgFunc free_ne_net_msg_func[NE_MSG_COUNT];
+#define PARSE_FUNC_NAME(type) parse_ ## type
+#define PRINT_FUNC_NAME(type) print_ ## type
+#define FREE_FUNC_NAME(type) free_ ## type
+#define DECL_MSG_IN_TABLE(x) { PARSE_FUNC_NAME(x),  PRINT_FUNC_NAME(x), FREE_FUNC_NAME(x) },
+
+extern const NetSvcMessageTable oe_net_massage_table[NET_MSG_COUNT];
+extern const NetSvcMessageTable ne_net_massage_table[NET_MSG_COUNT];
+
+extern const NetSvcMessageID oe_net_massage_ids[NET_MSG_COUNT];
+extern const NetSvcMessageID ne_net_massage_ids[NET_MSG_COUNT];
 
 typedef struct {
     uint8_t empty;
@@ -116,7 +154,7 @@ typedef struct {
 typedef struct {
     uint32_t transfer_id;
     char* file_name;
-    bool file_requested;
+    uint8_t file_flags;
 } NetFile;
 
 typedef struct {
@@ -126,8 +164,8 @@ typedef struct {
 #define NET_TICK_SCALEUP 1e5
 typedef struct {
     uint32_t tick;
-    uint32_t host_frame_time;
-    uint32_t host_frame_time_std_deviation;
+    uint16_t host_frame_time;
+    uint16_t host_frame_time_std_deviation;
 } NetTick;
 
 typedef struct {
@@ -145,43 +183,48 @@ typedef struct {
 } NetSetConVar;
 
 typedef struct {
-    uint32_t signon_state;
+    uint8_t signon_state;
     uint32_t spawn_count;
+    uint32_t num_server_players;
+    uint32_t ids_length;
+    uint8_t* players_network_ids;
+    uint32_t map_name_length;
+    char* map_name;
 } NetSignonState;
 
 typedef struct {
-    uint32_t protocol;
+    uint8_t network_protocol;
     uint32_t server_count;
     bool is_hltv;
     bool is_dedicated;
     uint32_t client_crc;
-    uint32_t max_class;
+    uint16_t max_class;
     uint32_t map_crc;
-    uint32_t player_slot;
-    uint32_t max_clients;
-    uint32_t unk[3];
+    uint8_t player_slot;
+    uint8_t max_clients;
     float tick_interval;
     char c_os;
     char* game_dir;
     char* map_name;
     char* sky_name;
     char* host_name;
+    bool has_replay;
 } SvcServerInfo;
 
 typedef struct {
     bool needs_decoder;
-    uint32_t length;
+    uint8_t length;
     uint8_t* props;
 } SvcSendTable;
 
 typedef struct {
-    uint16_t class_id;
+    uint32_t class_id;
     char* class_name;
     char* data_table_name;
 } ServerClass;
 
 typedef struct {
-    uint32_t length;
+    uint16_t length;
     bool create_on_client;
     ServerClass* server_classes;
 } SvcClassInfo;
@@ -192,7 +235,7 @@ typedef struct {
 
 typedef struct {
     char* name;
-    uint32_t max_entries;
+    uint16_t max_entries;
     uint32_t num_entries;
     uint32_t length;
     bool user_data_fixed_size;
@@ -205,21 +248,21 @@ typedef struct {
 typedef struct {
     uint32_t table_id;
     bool has_num_changed_entries;
-    uint32_t num_changed_entries;
+    uint16_t num_changed_entries;
     uint32_t length;
     uint8_t* data;
 } SvcUpdateStringTable;
 
 typedef struct {
     char* codec;
-    uint32_t quality;
-    float unk;
+    uint8_t quality;
+    float unknown;
 } SvcVoiceInit;
 
 typedef struct {
-    uint32_t client;
-    uint32_t proximity;
-    uint32_t length;
+    uint8_t client;
+    uint8_t proximity;
+    uint16_t length;
     uint8_t* data;
 } SvcVoiceData;
 
@@ -229,8 +272,8 @@ typedef struct {
 
 typedef struct {
     bool reliable_sound;
-    uint32_t size;
-    uint32_t length;
+    uint8_t size;
+    uint16_t length;
     uint8_t* data;
 } SvcSounds;
 
@@ -240,11 +283,11 @@ typedef struct {
 
 typedef struct {
     bool relative;
-    uint32_t angle[3];
+    uint16_t angle[3];
 } SvcFixAngle;
 
 typedef struct {
-    uint32_t angle[3];
+    uint16_t angle[3];
 } SvcCrosshairAngle;
 
 typedef struct {
@@ -261,13 +304,13 @@ typedef struct {
 } SvcBspDecal;
 
 typedef struct {
-    uint32_t Unk;
+    uint32_t unknown;
     uint32_t length;
     uint8_t* data;
 } SvcSplitScreen;
 
 typedef struct {
-    uint32_t msg_type;
+    uint8_t msg_type;
     uint32_t length;
     uint8_t* data;
 } SvcUserMessage;
@@ -301,7 +344,7 @@ typedef struct {
 } SvcPacketEntities;
 
 typedef struct {
-    uint32_t num_entries;
+    uint8_t num_entries;
     uint32_t length;
     uint8_t* data;
 } SvcTempEntities;
@@ -311,7 +354,7 @@ typedef struct {
 } SvcPrefetch;
 
 typedef struct {
-    uint32_t menu_type;
+    uint16_t menu_type;
     uint32_t length;
     uint8_t* data;
 } SvcMenu;
@@ -319,7 +362,7 @@ typedef struct {
 typedef struct {
     uint32_t event_id;
     char* name;
-    // TODO: hash map here
+    uint8_t* keys;
 } GameEventDescriptor;
 
 typedef struct {
@@ -347,7 +390,7 @@ typedef struct {
 struct _NetSvcMessage {
     NetSvcMessageType type;
     union {
-        MACRO_NE_MESSAGES(DECL_MSG_IN_UION)
+        MACRO_ALL_NET_MESSAGES(DECL_MSG_IN_UION)
     } data;
 };
 

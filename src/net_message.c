@@ -1,176 +1,309 @@
 #include "net_message.h"
+#include "demo_info.h"
+#include "alloc.h"
 
-#define PARSE_FUNC_NAME(type) parse_ ## type
-#define PRINT_FUNC_NAME(type) print_ ## type
-#define FREE_FUNC_NAME(type) free_ ## type
-#define DECL_PARSE_FUNC(type) static void PARSE_FUNC_NAME(type)(NetSvcMessage* msg, BitStream* bits)
-#define DECL_PRINT_FUNC(type) static void  PRINT_FUNC_NAME(type)(const NetSvcMessage* msg, FILE* fp)
-#define DECL_FREE_FUNC(type) static void  FREE_FUNC_NAME(type)(NetSvcMessage* msg)
+#define DECL_NET_PARSE_FUNC(type) static void PARSE_FUNC_NAME(type)(NetSvcMessage* msg, BitStream* bits)
+#define DECL_NET_PRINT_FUNC(type) static void  PRINT_FUNC_NAME(type)(const NetSvcMessage* msg, FILE* fp)
+#define DECL_NET_FREE_FUNC(type) static void  FREE_FUNC_NAME(type)(NetSvcMessage* msg)
 
-DECL_PARSE_FUNC(NetNop);
-DECL_PRINT_FUNC(NetNop);
-DECL_FREE_FUNC(NetNop);
+// NetNop
+DECL_NET_PARSE_FUNC(NetNop) {}
+DECL_NET_PRINT_FUNC(NetNop) {
+    fprintf(fp, "\tNetNop\n");
+}
+DECL_NET_FREE_FUNC(NetNop) {}
 
-DECL_PARSE_FUNC(NetDisconnect);
-DECL_PRINT_FUNC(NetDisconnect);
-DECL_FREE_FUNC(NetDisconnect);
+// NetDisconnect
+DECL_NET_PARSE_FUNC(NetDisconnect) {
+    msg->data.NetDisconnect_message.text = bits_read_str(bits);
+}
+DECL_NET_PRINT_FUNC(NetDisconnect) {
+    fprintf(fp, "\tNetDisconnect\n");
+    fprintf(fp, "\t\tText: %s\n", msg->data.NetDisconnect_message.text);
 
-DECL_PARSE_FUNC(NetFile);
-DECL_PRINT_FUNC(NetFile);
-DECL_FREE_FUNC(NetFile);
+}
+DECL_NET_FREE_FUNC(NetDisconnect) {
+    free(msg->data.NetDisconnect_message.text);
+}
 
-DECL_PARSE_FUNC(NetSplitScreenUser);
-DECL_PRINT_FUNC(NetSplitScreenUser);
-DECL_FREE_FUNC(NetSplitScreenUser);
+// NetFile
+DECL_NET_PARSE_FUNC(NetFile) {
+    msg->data.NetFile_message.transfer_id = bits_read_le_u32(bits);
+    msg->data.NetFile_message.file_name = bits_read_str(bits);
+    msg->data.NetFile_message.file_flags = bits_read_bits(demo_info.NE ? 2 : 1, bits);
+}
+DECL_NET_PRINT_FUNC(NetFile) {
+    fprintf(fp, "\tNetFile\n");
+    fprintf(fp, "\t\tTransferId: %d\n", msg->data.NetFile_message.transfer_id);
+    fprintf(fp, "\t\tFileName: %s\n", msg->data.NetFile_message.file_name);
+    fprintf(fp, "\t\tFileFlags: %d\n", msg->data.NetFile_message.file_flags);
+}
+DECL_NET_FREE_FUNC(NetFile) {
+    free(msg->data.NetFile_message.file_name);
+}
 
-DECL_PARSE_FUNC(NetTick);
-DECL_PRINT_FUNC(NetTick);
-DECL_FREE_FUNC(NetTick);
+// NetSplitScreenUser
+DECL_NET_PARSE_FUNC(NetSplitScreenUser) {
+    msg->data.NetSplitScreenUser_message.unknown = bits_read_one_bit(bits);
+}
+DECL_NET_PRINT_FUNC(NetSplitScreenUser) {
+    fprintf(fp, "\tNetSplitScreenUser\n");
+    fprintf(fp, "\t\tUnknown: %s\n", msg->data.NetSplitScreenUser_message.unknown ? "true" : "false");
+}
+DECL_NET_FREE_FUNC(NetSplitScreenUser) {}
 
-DECL_PARSE_FUNC(NetStringCmd);
-DECL_PRINT_FUNC(NetStringCmd);
-DECL_FREE_FUNC(NetStringCmd);
+// NetTick
+DECL_NET_PARSE_FUNC(NetTick) {
+    msg->data.NetTick_message.tick = bits_read_le_u32(bits);
+    if (demo_info.game != HL2_OE) {
+        msg->data.NetTick_message.host_frame_time = bits_read_le_u16(bits);
+        msg->data.NetTick_message.host_frame_time_std_deviation = bits_read_le_u16(bits);
+    }
+}
+DECL_NET_PRINT_FUNC(NetTick) {
+    fprintf(fp, "\tNetTick\n");
+    fprintf(fp, "\t\tTick: %d\n", msg->data.NetTick_message.tick);
+    if (demo_info.game != HL2_OE) {
+        fprintf(fp, "\t\tHostFrameTime: %.3f\n", (float)msg->data.NetTick_message.host_frame_time / NET_TICK_SCALEUP);
+        fprintf(fp, "\t\tHostFrameTimeStdDev: %.3f\n", (float)msg->data.NetTick_message.host_frame_time_std_deviation / NET_TICK_SCALEUP);
+    }
+}
+DECL_NET_FREE_FUNC(NetTick) {}
 
-DECL_PARSE_FUNC(NetSetConVar);
-DECL_PRINT_FUNC(NetSetConVar);
-DECL_FREE_FUNC(NetSetConVar);
+// NetStringCmd
+DECL_NET_PARSE_FUNC(NetStringCmd) {
+    msg->data.NetStringCmd_message.command = bits_read_str(bits);
+}
+DECL_NET_PRINT_FUNC(NetStringCmd) {
+    fprintf(fp, "\tNetStringCmd\n");
+    fprintf(fp, "\t\tCommand: %s\n", msg->data.NetStringCmd_message.command);
+}
+DECL_NET_FREE_FUNC(NetStringCmd) {
+    free(msg->data.NetStringCmd_message.command);
+}
 
-DECL_PARSE_FUNC(NetSignonState);
-DECL_PRINT_FUNC(NetSignonState);
-DECL_FREE_FUNC(NetSignonState);
+// NetSetConVar
+DECL_NET_PARSE_FUNC(NetSetConVar) {
+    uint8_t len = msg->data.NetSetConVar_message.length = bits_read_le_u8(bits);
+    msg->data.NetSetConVar_message.cvars = malloc_s(len * sizeof(ConVar));
+    for (int i = 0; i < len; i++) {
+        msg->data.NetSetConVar_message.cvars[i].name = bits_read_str(bits);
+        msg->data.NetSetConVar_message.cvars[i].value = bits_read_str(bits);
+    }
+}
+DECL_NET_PRINT_FUNC(NetSetConVar) {
+    uint8_t len = msg->data.NetSetConVar_message.length;
+    fprintf(fp, "\tNetSetConVar\n");
+    fprintf(fp, "\t\tConVars:\n");
+    for (int i = 0; i < len; i++) {
+        fprintf(fp, "\t\t\tName: %s\n", msg->data.NetSetConVar_message.cvars[i].name);
+        fprintf(fp, "\t\t\tValue: %s\n", msg->data.NetSetConVar_message.cvars[i].value);
+    }
+}
+DECL_NET_FREE_FUNC(NetSetConVar) {
+    uint8_t len = msg->data.NetSetConVar_message.length;
+    for (int i = 0; i < len; i++) {
+        free(msg->data.NetSetConVar_message.cvars[i].name);
+        free(msg->data.NetSetConVar_message.cvars[i].value);
+    }
+    free(msg->data.NetSetConVar_message.cvars);
+}
 
-DECL_PARSE_FUNC(SvcServerInfo);
-DECL_PRINT_FUNC(SvcServerInfo);
-DECL_FREE_FUNC(SvcServerInfo);
+// NetSignonState
+DECL_NET_PARSE_FUNC(NetSignonState) {
+    msg->data.NetSignonState_message.signon_state = bits_read_le_u8(bits);
+    msg->data.NetSignonState_message.spawn_count = bits_read_le_u32(bits);
+    if (demo_info.NE) {
+        uint8_t len;
+        msg->data.NetSignonState_message.num_server_players = bits_read_le_u32(bits);
+        len = msg->data.NetSignonState_message.ids_length = bits_read_le_u32(bits);
+        if (len > 0) {
+            msg->data.NetSignonState_message.players_network_ids = malloc_s(len);
+            bits_read_bytes((char*)msg->data.NetSignonState_message.players_network_ids, len, bits);
+        }
+        len = msg->data.NetSignonState_message.map_name_length = bits_read_le_u32(bits);
+        if (len > 0) {
+            msg->data.NetSignonState_message.map_name = malloc_s(len);
+            bits_read_bytes((char*)msg->data.NetSignonState_message.map_name, len, bits);
+        }
+    }
+}
+DECL_NET_PRINT_FUNC(NetSignonState) {
+    fprintf(fp, "\tNetSignonState\n");
+    fprintf(fp, "\t\tSignonState: %d\n", msg->data.NetSignonState_message.signon_state);
+    fprintf(fp, "\t\tSpawnCount: %d\n", msg->data.NetSignonState_message.spawn_count);
+    if (demo_info.NE) {
+        fprintf(fp, "\t\tNumServerPlayers: %d\n", msg->data.NetSignonState_message.num_server_players);
+        uint32_t len = msg->data.NetSignonState_message.ids_length;
+        fprintf(fp, "\t\tPlayersNetworkIds:\n\t\t\t[");
+        if (len > 0) {
+            for (uint32_t i = 0; i < len; i++) {
+                fprintf(fp, "%d%s", msg->data.NetSignonState_message.players_network_ids[i], (i == len - 1) ? "]\n" : ", ");
+            }
+        }
+        if (msg->data.NetSignonState_message.map_name_length > 0) {
+            fprintf(fp, "\t\tMapName: %s\n", msg->data.NetSignonState_message.map_name);
+        }
+    }
+}
+DECL_NET_FREE_FUNC(NetSignonState) {
+    if (demo_info.NE) {
+        if (msg->data.NetSignonState_message.ids_length > 0) {
+            free(msg->data.NetSignonState_message.players_network_ids);
+        }
+        if (msg->data.NetSignonState_message.map_name_length > 0) {
+            free(msg->data.NetSignonState_message.map_name);
+        }
+    }
+}
 
-DECL_PARSE_FUNC(SvcSendTable);
-DECL_PRINT_FUNC(SvcSendTable);
-DECL_FREE_FUNC(SvcSendTable);
+// SvcServerInfo
+DECL_NET_PARSE_FUNC(SvcServerInfo) {}
+DECL_NET_PRINT_FUNC(SvcServerInfo) {}
+DECL_NET_FREE_FUNC(SvcServerInfo) {}
 
-DECL_PARSE_FUNC(SvcClassInfo);
-DECL_PRINT_FUNC(SvcClassInfo);
-DECL_FREE_FUNC(SvcClassInfo);
+// SvcSendTable
+DECL_NET_PARSE_FUNC(SvcSendTable) {}
+DECL_NET_PRINT_FUNC(SvcSendTable) {}
+DECL_NET_FREE_FUNC(SvcSendTable) {}
 
-DECL_PARSE_FUNC(SvcSetPause);
-DECL_PRINT_FUNC(SvcSetPause);
-DECL_FREE_FUNC(SvcSetPause);
+// SvcClassInfo
+DECL_NET_PARSE_FUNC(SvcClassInfo) {}
+DECL_NET_PRINT_FUNC(SvcClassInfo) {}
+DECL_NET_FREE_FUNC(SvcClassInfo) {}
 
-DECL_PARSE_FUNC(SvcCreateStringTable);
-DECL_PRINT_FUNC(SvcCreateStringTable);
-DECL_FREE_FUNC(SvcCreateStringTable);
+// SvcSetPause
+DECL_NET_PARSE_FUNC(SvcSetPause) {}
+DECL_NET_PRINT_FUNC(SvcSetPause) {}
+DECL_NET_FREE_FUNC(SvcSetPause) {}
 
-DECL_PARSE_FUNC(SvcUpdateStringTable);
-DECL_PRINT_FUNC(SvcUpdateStringTable);
-DECL_FREE_FUNC(SvcUpdateStringTable);
+// SvcCreateStringTable
+DECL_NET_PARSE_FUNC(SvcCreateStringTable) {}
+DECL_NET_PRINT_FUNC(SvcCreateStringTable) {}
+DECL_NET_FREE_FUNC(SvcCreateStringTable) {}
 
-DECL_PARSE_FUNC(SvcVoiceInit);
-DECL_PRINT_FUNC(SvcVoiceInit);
-DECL_FREE_FUNC(SvcVoiceInit);
+// SvcUpdateStringTable
+DECL_NET_PARSE_FUNC(SvcUpdateStringTable) {}
+DECL_NET_PRINT_FUNC(SvcUpdateStringTable) {}
+DECL_NET_FREE_FUNC(SvcUpdateStringTable) {}
 
-DECL_PARSE_FUNC(SvcVoiceData);
-DECL_PRINT_FUNC(SvcVoiceData);
-DECL_FREE_FUNC(SvcVoiceData);
+// SvcVoiceInit
+DECL_NET_PARSE_FUNC(SvcVoiceInit) {}
+DECL_NET_PRINT_FUNC(SvcVoiceInit) {}
+DECL_NET_FREE_FUNC(SvcVoiceInit) {}
 
-DECL_PARSE_FUNC(SvcPrint);
-DECL_PRINT_FUNC(SvcPrint);
-DECL_FREE_FUNC(SvcPrint);
+// SvcVoiceData
+DECL_NET_PARSE_FUNC(SvcVoiceData) {}
+DECL_NET_PRINT_FUNC(SvcVoiceData) {}
+DECL_NET_FREE_FUNC(SvcVoiceData) {}
 
-DECL_PARSE_FUNC(SvcSounds);
-DECL_PRINT_FUNC(SvcSounds);
-DECL_FREE_FUNC(SvcSounds);
+// SvcPrint
+DECL_NET_PARSE_FUNC(SvcPrint) {}
+DECL_NET_PRINT_FUNC(SvcPrint) {}
+DECL_NET_FREE_FUNC(SvcPrint) {}
 
-DECL_PARSE_FUNC(SvcSetView);
-DECL_PRINT_FUNC(SvcSetView);
-DECL_FREE_FUNC(SvcSetView);
+// SvcSounds
+DECL_NET_PARSE_FUNC(SvcSounds) {}
+DECL_NET_PRINT_FUNC(SvcSounds) {}
+DECL_NET_FREE_FUNC(SvcSounds) {}
 
-DECL_PARSE_FUNC(SvcFixAngle);
-DECL_PRINT_FUNC(SvcFixAngle);
-DECL_FREE_FUNC(SvcFixAngle);
+// SvcSetView
+DECL_NET_PARSE_FUNC(SvcSetView) {}
+DECL_NET_PRINT_FUNC(SvcSetView) {}
+DECL_NET_FREE_FUNC(SvcSetView) {}
 
-DECL_PARSE_FUNC(SvcCrosshairAngle);
-DECL_PRINT_FUNC(SvcCrosshairAngle);
-DECL_FREE_FUNC(SvcCrosshairAngle);
+// SvcFixAngle
+DECL_NET_PARSE_FUNC(SvcFixAngle) {}
+DECL_NET_PRINT_FUNC(SvcFixAngle) {}
+DECL_NET_FREE_FUNC(SvcFixAngle) {}
 
-DECL_PARSE_FUNC(SvcBspDecal);
-DECL_PRINT_FUNC(SvcBspDecal);
-DECL_FREE_FUNC(SvcBspDecal);
+// SvcCrosshairAngle
+DECL_NET_PARSE_FUNC(SvcCrosshairAngle) {}
+DECL_NET_PRINT_FUNC(SvcCrosshairAngle) {}
+DECL_NET_FREE_FUNC(SvcCrosshairAngle) {}
 
-DECL_PARSE_FUNC(SvcSplitScreen);
-DECL_PRINT_FUNC(SvcSplitScreen);
-DECL_FREE_FUNC(SvcSplitScreen);
+// SvcBspDecal
+DECL_NET_PARSE_FUNC(SvcBspDecal) {}
+DECL_NET_PRINT_FUNC(SvcBspDecal) {}
+DECL_NET_FREE_FUNC(SvcBspDecal) {}
 
-DECL_PARSE_FUNC(SvcUserMessage);
-DECL_PRINT_FUNC(SvcUserMessage);
-DECL_FREE_FUNC(SvcUserMessage);
+// SvcSplitScreen
+DECL_NET_PARSE_FUNC(SvcSplitScreen) {}
+DECL_NET_PRINT_FUNC(SvcSplitScreen) {}
+DECL_NET_FREE_FUNC(SvcSplitScreen) {}
 
-DECL_PARSE_FUNC(SvcEntityMessage);
-DECL_PRINT_FUNC(SvcEntityMessage);
-DECL_FREE_FUNC(SvcEntityMessage);
+// SvcUserMessage
+DECL_NET_PARSE_FUNC(SvcUserMessage) {}
+DECL_NET_PRINT_FUNC(SvcUserMessage) {}
+DECL_NET_FREE_FUNC(SvcUserMessage) {}
 
-DECL_PARSE_FUNC(SvcGameEvent);
-DECL_PRINT_FUNC(SvcGameEvent);
-DECL_FREE_FUNC(SvcGameEvent);
+// SvcEntityMessage
+DECL_NET_PARSE_FUNC(SvcEntityMessage) {}
+DECL_NET_PRINT_FUNC(SvcEntityMessage) {}
+DECL_NET_FREE_FUNC(SvcEntityMessage) {}
 
-DECL_PARSE_FUNC(SvcPacketEntities);
-DECL_PRINT_FUNC(SvcPacketEntities);
-DECL_FREE_FUNC(SvcPacketEntities);
+// SvcGameEvent
+DECL_NET_PARSE_FUNC(SvcGameEvent) {}
+DECL_NET_PRINT_FUNC(SvcGameEvent) {}
+DECL_NET_FREE_FUNC(SvcGameEvent) {}
 
-DECL_PARSE_FUNC(SvcTempEntities);
-DECL_PRINT_FUNC(SvcTempEntities);
-DECL_FREE_FUNC(SvcTempEntities);
+// SvcPacketEntities
+DECL_NET_PARSE_FUNC(SvcPacketEntities) {}
+DECL_NET_PRINT_FUNC(SvcPacketEntities) {}
+DECL_NET_FREE_FUNC(SvcPacketEntities) {}
 
-DECL_PARSE_FUNC(SvcPrefetch);
-DECL_PRINT_FUNC(SvcPrefetch);
-DECL_FREE_FUNC(SvcPrefetch);
+// SvcTempEntities
+DECL_NET_PARSE_FUNC(SvcTempEntities) {}
+DECL_NET_PRINT_FUNC(SvcTempEntities) {}
+DECL_NET_FREE_FUNC(SvcTempEntities) {}
 
-DECL_PARSE_FUNC(SvcMenu);
-DECL_PRINT_FUNC(SvcMenu);
-DECL_FREE_FUNC(SvcMenu);
+// SvcPrefetch
+DECL_NET_PARSE_FUNC(SvcPrefetch) {}
+DECL_NET_PRINT_FUNC(SvcPrefetch) {}
+DECL_NET_FREE_FUNC(SvcPrefetch) {}
 
-DECL_PARSE_FUNC(SvcGameEventList);
-DECL_PRINT_FUNC(SvcGameEventList);
-DECL_FREE_FUNC(SvcGameEventList);
+// SvcMenu
+DECL_NET_PARSE_FUNC(SvcMenu) {}
+DECL_NET_PRINT_FUNC(SvcMenu) {}
+DECL_NET_FREE_FUNC(SvcMenu) {}
 
-DECL_PARSE_FUNC(SvcGetCvarValue);
-DECL_PRINT_FUNC(SvcGetCvarValue);
-DECL_FREE_FUNC(SvcGetCvarValue);
+// SvcGameEventList
+DECL_NET_PARSE_FUNC(SvcGameEventList) {}
+DECL_NET_PRINT_FUNC(SvcGameEventList) {}
+DECL_NET_FREE_FUNC(SvcGameEventList) {}
 
-DECL_PARSE_FUNC(SvcCmdKeyValues);
-DECL_PRINT_FUNC(SvcCmdKeyValues);
-DECL_FREE_FUNC(SvcCmdKeyValues);
+// SvcGetCvarValue
+DECL_NET_PARSE_FUNC(SvcGetCvarValue) {}
+DECL_NET_PRINT_FUNC(SvcGetCvarValue) {}
+DECL_NET_FREE_FUNC(SvcGetCvarValue) {}
 
-DECL_PARSE_FUNC(SvcPaintmapData);
-DECL_PRINT_FUNC(SvcPaintmapData);
-DECL_FREE_FUNC(SvcPaintmapData);
+// SvcCmdKeyValues
+DECL_NET_PARSE_FUNC(SvcCmdKeyValues) {}
+DECL_NET_PRINT_FUNC(SvcCmdKeyValues) {}
+DECL_NET_FREE_FUNC(SvcCmdKeyValues) {}
 
-DECL_PARSE_FUNC(Invalid1) {}
-DECL_PRINT_FUNC(Invalid1) {}
-DECL_FREE_FUNC(Invalid1) {}
+// SvcPaintmapData
+DECL_NET_PARSE_FUNC(SvcPaintmapData) {}
+DECL_NET_PRINT_FUNC(SvcPaintmapData) {}
+DECL_NET_FREE_FUNC(SvcPaintmapData) {}
 
-DECL_PARSE_FUNC(Invalid2) {}
-DECL_PRINT_FUNC(Invalid2) {}
-DECL_FREE_FUNC(Invalid2) {}
+// Invalid
+DECL_NET_PARSE_FUNC(NetInvalid) {}
+DECL_NET_PRINT_FUNC(NetInvalid) {}
+DECL_NET_FREE_FUNC(NetInvalid) {}
 
-#define DECL_PARSE_FUNCS_IN_ARRAY(x) PARSE_FUNC_NAME(x),
-#define DECL_PRINT_FUNCS_IN_ARRAY(x) PRINT_FUNC_NAME(x),
-#define DECL_FREE_FUNCS_IN_ARRAY(x) FREE_FUNC_NAME(x),
-
-ParseNetSvcMsgFunc parse_oe_net_msg_func[OE_MSG_COUNT] = {
-    MACRO_OE_MESSAGES(DECL_PARSE_FUNCS_IN_ARRAY)
+// function tables
+const NetSvcMessageTable oe_net_massage_table[NET_MSG_COUNT] = {
+    MACRO_OE_NET_MESSAGES(DECL_MSG_IN_TABLE)
 };
-PrintNetSvcMsgFunc print_oe_net_msg_func[OE_MSG_COUNT] = {
-    MACRO_OE_MESSAGES(DECL_PRINT_FUNCS_IN_ARRAY)
-};
-FreeNetSvcMsgFunc free_oe_net_msg_func[OE_MSG_COUNT] = {
-    MACRO_OE_MESSAGES(DECL_FREE_FUNCS_IN_ARRAY)
+
+const NetSvcMessageTable ne_net_massage_table[NET_MSG_COUNT] = {
+    MACRO_NE_NET_MESSAGES(DECL_MSG_IN_TABLE)
 };
 
-ParseNetSvcMsgFunc parse_ne_net_msg_func[NE_MSG_COUNT] = {
-    MACRO_NE_MESSAGES(DECL_PARSE_FUNCS_IN_ARRAY)
+const NetSvcMessageID oe_net_massage_ids[NET_MSG_COUNT] = {
+    MACRO_OE_NET_MESSAGES(DECL_MSG_IN_ENUM)
 };
-PrintNetSvcMsgFunc print_ne_net_msg_func[NE_MSG_COUNT] = {
-    MACRO_NE_MESSAGES(DECL_PRINT_FUNCS_IN_ARRAY)
-};
-FreeNetSvcMsgFunc free_ne_net_msg_func[NE_MSG_COUNT] = {
-    MACRO_NE_MESSAGES(DECL_FREE_FUNCS_IN_ARRAY)
+const NetSvcMessageID ne_net_massage_ids[NET_MSG_COUNT] = {
+    MACRO_NE_NET_MESSAGES(DECL_MSG_IN_ENUM)
 };

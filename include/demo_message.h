@@ -1,20 +1,83 @@
 #ifndef DEMO_MESSAGE_H
 #define DEMO_MESSAGE_H
 
-#include <stdint.h>
-#include <stdbool.h>
 #include "net_message.h"
+#include "vector.h"
 
-enum DemoMessageType {
-    SIGN_ON = 1,
-    PACKET,
-    SYNC_TICK,
-    CONSOLECMD,
-    USERCMD,
-    DATA_TABLES,
-    STOP,
-    STRING_TABLES
-};
+#define MACRO_ALL_MESSAGES(macro)   \
+macro(SignOn)                       \
+macro(Packet)                       \
+macro(SyncTick)                     \
+macro(ConsoleCmd)                   \
+macro(UserCmd)                      \
+macro(DataTables)                   \
+macro(Stop)                         \
+macro(CustomData)                   \
+macro(StringTables)
+
+#define MACRO_PORTAL_3420_MESSAGES(macro)   \
+macro(StringTables)                         \
+macro(SignOn)                               \
+macro(Packet)                               \
+macro(SyncTick)                             \
+macro(ConsoleCmd)                           \
+macro(UserCmd)                              \
+macro(DataTables)                           \
+macro(Stop)                                 \
+macro(Invalid)                              \
+macro(Invalid)
+
+#define MACRO_PORTAL_5135_MESSAGES(macro)   \
+macro(Invalid)                              \
+macro(SignOn)                               \
+macro(Packet)                               \
+macro(SyncTick)                             \
+macro(ConsoleCmd)                           \
+macro(UserCmd)                              \
+macro(DataTables)                           \
+macro(Stop)                                 \
+macro(StringTables)                         \
+macro(Invalid)
+
+#define MACRO_NE_MESSAGES(macro)    \
+macro(Invalid)                      \
+macro(SignOn)                       \
+macro(Packet)                       \
+macro(SyncTick)                     \
+macro(ConsoleCmd)                   \
+macro(UserCmd)                      \
+macro(DataTables)                   \
+macro(Stop)                         \
+macro(CustomData)                   \
+macro(StringTables)
+
+typedef uint8_t DemoMessageType;
+
+typedef enum {
+    Invalid_MSG,
+    MACRO_ALL_MESSAGES(DECL_MSG_IN_ENUM)
+    MESSAGE_COUNT
+} DemoMessageID;
+
+typedef struct _DemoMessage DemoMessage;
+
+typedef void (*ParseMessageFunc)(DemoMessage* msg, BitStream* bits);
+typedef void (*PrintMessageFunc)(const DemoMessage* msg, FILE* fp);
+typedef void (*FreeMessageFunc)(DemoMessage* msg);
+
+typedef struct {
+    ParseMessageFunc parse;
+    PrintMessageFunc print;
+    FreeMessageFunc free;
+} DemoMessageTable;
+
+extern const DemoMessageTable portal_3420_massage_table[MESSAGE_COUNT];
+extern const DemoMessageTable portal_5135_massage_table[MESSAGE_COUNT];
+extern const DemoMessageTable ne_massage_table[MESSAGE_COUNT];
+
+extern const DemoMessageID portal_3420_massage_ids[MESSAGE_COUNT];
+extern const DemoMessageID portal_5135_massage_ids[MESSAGE_COUNT];
+extern const DemoMessageID ne_massage_ids[MESSAGE_COUNT];
 
 typedef struct {
     int32_t flags;
@@ -26,13 +89,22 @@ typedef struct {
     float local_view_angles2[3];
 } CmdInfo;
 
+typedef VECTOR(NetSvcMessage) Vector_NetSvcMessage;
+
+#define MSSC_MAX 2
 typedef struct {
-    CmdInfo packet_info;
+    CmdInfo packet_info[MSSC_MAX];
     uint32_t in_sequence;
     uint32_t out_sequence;
     uint32_t size;
-    NetSvcMessage* data;
-} Packet;
+    Vector_NetSvcMessage data;
+} SignOn;
+
+typedef SignOn Packet;
+
+typedef struct {
+    uint8_t empty;
+} SyncTick;
 
 typedef struct {
     uint32_t size;
@@ -100,6 +172,16 @@ typedef struct {
 } DataTables;
 
 typedef struct {
+    uint8_t* remaining_data;
+} Stop;
+
+typedef struct {
+    uint32_t unknown;
+    uint32_t size;
+    uint8_t* data;
+} CustomData;
+
+typedef struct {
     bool has_entry_size;
     bool has_entry_data;
     bool has_num_of_client_entries;
@@ -107,7 +189,7 @@ typedef struct {
     bool has_client_entry_size;
     bool has_client_entry_data;
 
-    uint32_t num_of_tables;
+    uint8_t num_of_tables;
     char* table_name;
     uint16_t num_of_entries;
     char* entry_name;
@@ -124,25 +206,13 @@ typedef struct {
     StringTable* data;
 } StringTables;
 
-typedef struct _DemoMessage DemoMessage;
 struct _DemoMessage {
-    enum DemoMessageType type;
+    DemoMessageType type;
     int32_t tick;
+    uint8_t slot;
     union {
-        Packet packet;
-        ConsoleCmd console_cmd;
-        UserCmd user_cmd;
-        DataTables data_tables;
-        StringTables string_tables;
+        MACRO_ALL_MESSAGES(DECL_MSG_IN_UION)
     } data;
-    DemoMessage* next;
 };
-
-typedef struct {
-    uint32_t demo_protocol;
-    GameEventDescriptor game_event_descriptor;
-} GameState;
-
-extern GameState game_info;
 
 #endif
