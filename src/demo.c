@@ -132,7 +132,7 @@ int demo_parse(Demo* demo, bool quick_mode) {
 
     DemoMessageType type;
     do {
-        DemoMessage msg;
+        DemoMessage msg = { 0 };
         type = msg.type = bits_read_le_u8(bits);
         // Last byte is cut off in demos, use the previous byte
         int tick;
@@ -151,14 +151,15 @@ int demo_parse(Demo* demo, bool quick_mode) {
 
         // parse message
         if (type < MESSAGE_COUNT && demo_info.msg_ids[type] != Invalid_MSG) {
-            demo_info.msg_table[type].parse(&msg, bits);
+            demo_info.msg_table[type].parse(&msg.data, bits);
             vector_push(demo->messages, msg);
         }
         else {
-            fprintf(stderr, "[ERROR] Unexpected type %d at message %d.\n", type, (uint32_t)demo->messages.size + 1);
+            fprintf(stderr, "[ERROR] Unexpected type %d at message %d while parsing demo message.\n", type, (uint32_t)demo->messages.size + 1);
             break;
         }
     } while (type != demo_info.msg_ids[Stop_MSG]);
+    vector_shrink(demo->messages);
     return measured_ticks;
 }
 
@@ -173,7 +174,7 @@ void demo_verbose(const Demo* demo, FILE* fp) {
     for (size_t i = 0; i < demo->messages.size; i++) {
         const DemoMessage* msg = &demo->messages.data[i];
         fprintf(fp, "[%d] ", msg->tick);
-        demo_info.msg_table->print(msg, fp);
+        demo_info.msg_table->print(&msg->data, fp);
         fprintf(fp, "\n");
     }
 }
@@ -208,8 +209,8 @@ void demo_gen_tas_script(const Demo* demo, FILE* fp) {
 void demo_free(Demo* demo) {
     if (!demo) return;
     for (size_t i = 0; i < demo->messages.size; i++) {
-        DemoMessage* msg = &demo->messages.data[i];
-        demo_info.msg_table->free(msg);
+        DemoMessageData* data = &demo->messages.data[i].data;
+        demo_info.msg_table[i].free(data);
     }
     free(demo);
 }

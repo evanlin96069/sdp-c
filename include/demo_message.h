@@ -60,10 +60,11 @@ typedef enum {
 } DemoMessageID;
 
 typedef struct _DemoMessage DemoMessage;
+typedef union _DemoMessageData DemoMessageData;
 
-typedef void (*ParseMessageFunc)(DemoMessage* msg, BitStream* bits);
-typedef void (*PrintMessageFunc)(const DemoMessage* msg, FILE* fp);
-typedef void (*FreeMessageFunc)(DemoMessage* msg);
+typedef void (*ParseMessageFunc)(DemoMessageData* thisptr, BitStream* bits);
+typedef void (*PrintMessageFunc)(const DemoMessageData* thisptr, FILE* fp);
+typedef void (*FreeMessageFunc)(DemoMessageData* thisptr);
 
 typedef struct {
     ParseMessageFunc parse;
@@ -206,13 +207,17 @@ typedef struct {
     StringTable* data;
 } StringTables;
 
+typedef Stop Invalid;
+
+union _DemoMessageData {
+    MACRO_ALL_MESSAGES(DECL_MSG_IN_UION)
+};
+
 struct _DemoMessage {
     DemoMessageType type;
     int32_t tick;
     uint8_t slot;
-    union {
-        MACRO_ALL_MESSAGES(DECL_MSG_IN_UION)
-    } data;
+    DemoMessageData data;
 };
 
 #endif

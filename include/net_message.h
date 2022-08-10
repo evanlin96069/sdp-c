@@ -121,10 +121,11 @@ typedef enum {
 } NetSvcMessageID;
 
 typedef struct _NetSvcMessage NetSvcMessage;
+typedef union _NetSvcMessageData NetSvcMessageData;
 
-typedef void (*ParseNetSvcMsgFunc)(NetSvcMessage* msg, BitStream* bits);
-typedef void (*PrintNetSvcMsgFunc)(const NetSvcMessage* msg, FILE* fp);
-typedef void (*FreeNetSvcMsgFunc)(NetSvcMessage* msg);
+typedef void (*ParseNetSvcMsgFunc)(NetSvcMessageData* thisptr, BitStream* bits);
+typedef void (*PrintNetSvcMsgFunc)(const NetSvcMessageData* thisptr, FILE* fp);
+typedef void (*FreeNetSvcMsgFunc)(NetSvcMessageData* thisptr);
 
 typedef struct {
     ParseNetSvcMsgFunc parse;
@@ -135,7 +136,13 @@ typedef struct {
 #define PARSE_FUNC_NAME(type) parse_ ## type
 #define PRINT_FUNC_NAME(type) print_ ## type
 #define FREE_FUNC_NAME(type) free_ ## type
-#define DECL_MSG_IN_TABLE(x) { PARSE_FUNC_NAME(x),  PRINT_FUNC_NAME(x), FREE_FUNC_NAME(x) },
+#define DECL_PTR(type) type* ptr = &thisptr->type ## _message;
+#define DECL_MSG_IN_TABLE(x)    \
+{                               \
+    PARSE_FUNC_NAME(x),         \
+    PRINT_FUNC_NAME(x),         \
+    FREE_FUNC_NAME(x)           \
+},
 
 extern const NetSvcMessageTable oe_net_massage_table[NET_MSG_COUNT];
 extern const NetSvcMessageTable ne_net_massage_table[NET_MSG_COUNT];
@@ -193,12 +200,14 @@ typedef struct {
 } NetSignonState;
 
 typedef struct {
-    uint8_t network_protocol;
+    uint16_t network_protocol;
     uint32_t server_count;
     bool is_hltv;
     bool is_dedicated;
     uint32_t client_crc;
+    uint32_t string_table_crc;
     uint16_t max_class;
+    uint8_t map_md5[16];
     uint32_t map_crc;
     uint8_t player_slot;
     uint8_t max_clients;
@@ -213,7 +222,7 @@ typedef struct {
 
 typedef struct {
     bool needs_decoder;
-    uint8_t length;
+    uint16_t length;
     uint8_t* props;
 } SvcSendTable;
 
@@ -256,7 +265,7 @@ typedef struct {
 typedef struct {
     char* codec;
     uint8_t quality;
-    float unknown;
+    uint32_t unknown;
 } SvcVoiceInit;
 
 typedef struct {
@@ -386,12 +395,16 @@ typedef struct {
     uint8_t* data;
 } SvcPaintmapData;
 
+typedef NetNop NetInvalid;
+
 #define DECL_MSG_IN_UION(x) x x ## _message;
+union _NetSvcMessageData {
+    MACRO_ALL_NET_MESSAGES(DECL_MSG_IN_UION)
+};
+
 struct _NetSvcMessage {
     NetSvcMessageType type;
-    union {
-        MACRO_ALL_NET_MESSAGES(DECL_MSG_IN_UION)
-    } data;
+    NetSvcMessageData data;
 };
 
 #endif

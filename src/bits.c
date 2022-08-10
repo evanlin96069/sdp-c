@@ -50,6 +50,15 @@ void bits_skip(size_t bit_num, BitStream* bits) {
     bits_fetch(bits);
 }
 
+void bits_setpos(size_t bit_pos, BitStream* bits) {
+    if (bit_pos > bits->bit_size) {
+        fprintf(stderr, "[ERROR] BitStream overflow when setpos.\n");
+        exit(EXIT_FAILURE);
+    }
+    bits->current = bit_pos;
+    bits_fetch(bits);
+}
+
 void bits_fetch(BitStream* bits) {
     size_t block = bits->current >> 3;
     if (block + 8 > bits->byte_size) {
@@ -99,6 +108,34 @@ uint32_t bits_read_bits(size_t bit_size, BitStream* bits) {
     bits->offset += bit_size;
     bits->current += bit_size;
     return n;
+}
+
+uint32_t bits_read_varuint32(BitStream* bits) {
+    uint32_t result = 0;
+    for (int i = 0; i < 5;i++) {
+        uint32_t b = bits_read_le_u8(bits);
+        result |= (b & 0x7f) << (7 * i);
+        if ((b & 0x80) == 0)
+            break;
+    }
+    return result;
+}
+
+uint8_t* bits_read_bits_arr(size_t bit_size, BitStream* bits) {
+    if (bit_size <= 0)
+        return NULL;
+    VECTOR(uint8_t) arr = { 0 };
+    uint8_t n;
+    while (bit_size > 8) {
+        n = bits_read_le_u8(bits);
+        vector_push(arr, n);
+    }
+    if (bit_size) {
+        n = bits_read_bits(bit_size, bits);
+        vector_push(arr, n);
+    }
+    vector_shrink(arr);
+    return arr.data;
 }
 
 size_t bits_read_bytes(char* buf, size_t len, BitStream* bits) {
