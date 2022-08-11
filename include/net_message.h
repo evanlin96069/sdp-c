@@ -57,13 +57,13 @@ macro(SvcCreateStringTable)             \
 macro(SvcUpdateStringTable)             \
 macro(SvcVoiceInit)                     \
 macro(SvcVoiceData)                     \
-macro(NetInvalid)                       \
+macro(NetSvcInvalid)                       \
 macro(SvcSounds)                        \
 macro(SvcSetView)                       \
 macro(SvcFixAngle)                      \
 macro(SvcCrosshairAngle)                \
 macro(SvcBspDecal)                      \
-macro(NetInvalid)                       \
+macro(NetSvcInvalid)                       \
 macro(SvcUserMessage)                   \
 macro(SvcEntityMessage)                 \
 macro(SvcGameEvent)                     \
@@ -115,7 +115,7 @@ typedef uint8_t NetSvcMessageType;
 
 #define DECL_MSG_IN_ENUM(x) x ## _MSG,
 typedef enum {
-    NetInvalid_MSG = -1,
+    NetSvcInvalid_MSG = -1,
     MACRO_ALL_NET_MESSAGES(DECL_MSG_IN_ENUM)
     NET_MSG_COUNT
 } NetSvcMessageID;
@@ -307,20 +307,16 @@ typedef struct {
 } SvcCrosshairAngle;
 
 typedef struct {
-    bool has_pos_x;
-    bool has_pos_y;
-    bool has_pos_z;
-    float pos_x;
-    float pos_y;
-    float pos_z;
+    VectorCoord pos;
     uint32_t decal_texture_index;
+    bool has_entity_index;
     uint32_t entity_index;
     uint32_t model_index;
     bool low_priority;
 } SvcBspDecal;
 
 typedef struct {
-    uint32_t unknown;
+    bool remove_user;
     uint32_t length;
     uint8_t* data;
 } SvcSplitScreen;
@@ -402,7 +398,7 @@ typedef struct {
     uint8_t* data;
 } SvcPaintmapData;
 
-typedef NetNop NetInvalid;
+typedef NetNop NetSvcInvalid;
 
 #define DECL_MSG_IN_UION(x) x x ## _message;
 union _NetSvcMessageData {

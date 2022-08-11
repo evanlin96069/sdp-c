@@ -122,6 +122,36 @@ uint32_t bits_read_varuint32(BitStream* bits) {
     return result;
 }
 
+static BitCoord _bits_read_bitcoord(BitStream* bits) {
+    BitCoord result = { 0 };
+    result.exists = true;
+    result.has_int = bits_read_one_bit(bits);
+    result.has_frac = bits_read_one_bit(bits);
+
+    if (result.has_int || result.has_frac) {
+        result.sign = bits_read_one_bit(bits);
+        if (result.has_int)
+            result.int_value = bits_read_bits(COORD_INTEGER_BITS, bits);
+        if (result.has_frac)
+            result.frac_value = bits_read_bits(COORD_FRACTIONAL_BITS, bits);
+    }
+    return result;
+}
+
+VectorCoord bits_read_vcoord(BitStream* bits) {
+    VectorCoord result = { 0 };
+    result.x.exists = bits_read_one_bit(bits);
+    result.y.exists = bits_read_one_bit(bits);
+    result.z.exists = bits_read_one_bit(bits);
+    if (result.x.exists)
+        result.x = _bits_read_bitcoord(bits);
+    if (result.y.exists)
+        result.y = _bits_read_bitcoord(bits);
+    if (result.z.exists)
+        result.z = _bits_read_bitcoord(bits);
+    return result;
+}
+
 uint8_t* bits_read_bits_arr(size_t bit_size, BitStream* bits) {
     if (bit_size <= 0)
         return NULL;

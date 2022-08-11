@@ -7,7 +7,7 @@ mkdir -p obj
 
 warnings="-Wall -Wextra -pedantic -std=c99 -Wno-unused-parameter"
 
-dbg=1
+dbg=0
 if [ $dbg = 1 ]; then
 	cflags="-O0 -g3 -D_DEBUG"
 else

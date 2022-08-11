@@ -193,12 +193,14 @@ DECL_NET_PARSE_FUNC(SvcServerInfo) {
         ptr->string_table_crc = bits_read_le_u32(bits);
     }
     ptr->max_class = bits_read_le_u16(bits);
+
     if (demo_info.network_protocol == 24) {
         bits_read_bytes((char*)ptr->map_md5, 16, bits);
     }
     else {
         ptr->map_crc = bits_read_le_u32(bits);
     }
+
     ptr->player_slot = bits_read_le_u8(bits);
     ptr->max_clients = bits_read_le_u8(bits);
     ptr->tick_interval = bits_read_le_f32(bits);
@@ -223,6 +225,7 @@ DECL_NET_PRINT_FUNC(SvcServerInfo) {
         fprintf(fp, "\t\t\tStringTableCrc: %d\n", ptr->string_table_crc);
     }
     fprintf(fp, "\t\t\tMaxClass: %d\n", ptr->max_class);
+
     if (demo_info.network_protocol == 24) {
         const uint32_t* md5 = (uint32_t*)&ptr->map_md5;
         fprintf(fp, "\t\t\tMapMd5: %x%x%x%x\n", md5[0], md5[1], md5[2], md5[3]);
@@ -230,6 +233,7 @@ DECL_NET_PRINT_FUNC(SvcServerInfo) {
     else {
         fprintf(fp, "\t\t\tMapCrc: %d\n", ptr->map_crc);
     }
+
     fprintf(fp, "\t\t\tPlayerSlot: %d\n", ptr->player_slot);
     fprintf(fp, "\t\t\tMaxClients: %d\n", ptr->max_clients);
     fprintf(fp, "\t\t\tTickInterval: %.3f\n", ptr->tick_interval);
@@ -294,7 +298,7 @@ DECL_NET_PRINT_FUNC(SvcClassInfo) {
     if (!ptr->create_on_client) {
         fprintf(fp, "\t\t\tServerClasses\n");
         for (uint32_t i = 0; i < len; i++) {
-            fprintf(fp, "\t\t\t\tClassID: %d\n", classes[i].class_id);
+            fprintf(fp, "\t\t\t\tClassId: %d\n", classes[i].class_id);
             fprintf(fp, "\t\t\t\tClassName: %s\n", classes[i].class_name);
             fprintf(fp, "\t\t\t\tDataTableName: %s\n", classes[i].data_table_name);
         }
@@ -333,19 +337,24 @@ DECL_NET_PARSE_FUNC(SvcCreateStringTable) {
     uint32_t num_entries_bits = highest_bit_index(ptr->max_entries) + 1;
     ptr->num_entries = bits_read_bits(num_entries_bits, bits);
 
-    if (demo_info.network_protocol == 24)
+    if (demo_info.network_protocol == 24) {
         ptr->length = bits_read_varuint32(bits);
-    else
+    }
+    else {
         ptr->length = bits_read_bits(20, bits);
+    }
 
     ptr->user_data_fixed_size = bits_read_one_bit(bits);
     ptr->user_data_size = ptr->user_data_fixed_size ? bits_read_bits(12, bits) : 0;
     ptr->user_data_size_bits = ptr->user_data_fixed_size ? bits_read_bits(4, bits) : 0;
 
-    if (demo_info.network_protocol >= 15)
+    if (demo_info.network_protocol >= 15) {
         ptr->flags = bits_read_bits(demo_info.NE ? 2 : 1, bits);
-    else
+    }
+    else {
         ptr->flags = 0;
+    }
+
     // string_data parsing not implemented
     ptr->string_data = (uint8_t*)bits_read_bits_arr(ptr->length, bits);
     return true;
@@ -361,8 +370,9 @@ DECL_NET_PRINT_FUNC(SvcCreateStringTable) {
         fprintf(fp, "\t\t\tUserDataSize: %d\n", ptr->user_data_size);
         fprintf(fp, "\t\t\tUserDataSizeBits: %d\n", ptr->user_data_size_bits);
     }
-    if (demo_info.network_protocol >= 15)
+    if (demo_info.network_protocol >= 15) {
         fprintf(fp, "\t\t\tFlags: %d\n", ptr->flags);
+    }
 }
 DECL_NET_FREE_FUNC(SvcCreateStringTable) {
     DECL_PTR(SvcCreateStringTable);
@@ -372,10 +382,36 @@ DECL_NET_FREE_FUNC(SvcCreateStringTable) {
 
 // SvcUpdateStringTable
 DECL_NET_PARSE_FUNC(SvcUpdateStringTable) {
-    return false;
+    DECL_PTR(SvcUpdateStringTable);
+    ptr->table_id = bits_read_bits(5, bits);
+    ptr->has_num_changed_entries = bits_read_one_bit(bits);
+    if (ptr->has_num_changed_entries) {
+        ptr->num_changed_entries = bits_read_le_u16(bits);
+    }
+
+    if (demo_info.network_protocol <= 7) {
+        ptr->length = bits_read_bits(16, bits);
+    }
+    else {
+        ptr->length = bits_read_bits(20, bits);
+    }
+
+    // data parsing not implemented
+    ptr->data = bits_read_bits_arr(ptr->length, bits);
+    return true;
 }
-DECL_NET_PRINT_FUNC(SvcUpdateStringTable) {}
-DECL_NET_FREE_FUNC(SvcUpdateStringTable) {}
+DECL_NET_PRINT_FUNC(SvcUpdateStringTable) {
+    const DECL_PTR(SvcUpdateStringTable);
+    fprintf(fp, "\t\t\tTableId: %d\n", ptr->table_id);
+    if (ptr->has_num_changed_entries) {
+        fprintf(fp, "\t\t\tNumChangedEntries: %d\n", ptr->num_changed_entries);
+    }
+    fprintf(fp, "\t\t\tLength: %d\n", ptr->length);
+}
+DECL_NET_FREE_FUNC(SvcUpdateStringTable) {
+    DECL_PTR(SvcUpdateStringTable);
+    free(ptr->data);
+}
 
 // SvcVoiceInit
 DECL_NET_PARSE_FUNC(SvcVoiceInit) {
@@ -383,10 +419,12 @@ DECL_NET_PARSE_FUNC(SvcVoiceInit) {
     ptr->codec = bits_read_str(bits);
     ptr->quality = bits_read_le_u8(bits);
     if (ptr->quality == 255) {
-        if (demo_info.network_protocol == 24)
+        if (demo_info.network_protocol == 24) {
             ptr->unknown = bits_read_le_u16(bits);
-        else if (demo_info.demo_protocol == 4)
+        }
+        else if (demo_info.demo_protocol == 4) {
             ptr->unknown = bits_read_le_u32(bits);
+        }
     }
     return true;
 }
@@ -412,10 +450,24 @@ DECL_NET_FREE_FUNC(SvcVoiceInit) {
 
 // SvcVoiceData
 DECL_NET_PARSE_FUNC(SvcVoiceData) {
+    DECL_PTR(SvcVoiceData);
+    ptr->client = bits_read_le_u8(bits);
+    ptr->proximity = bits_read_le_u8(bits);
+    ptr->length = bits_read_le_u16(bits);
+    // data parsing not implemented
+    ptr->data = bits_read_bits_arr(ptr->length, bits);
     return true;
 }
-DECL_NET_PRINT_FUNC(SvcVoiceData) {}
-DECL_NET_FREE_FUNC(SvcVoiceData) {}
+DECL_NET_PRINT_FUNC(SvcVoiceData) {
+    const DECL_PTR(SvcVoiceData);
+    fprintf(fp, "\t\t\tClient: %d\n", ptr->client);
+    fprintf(fp, "\t\t\tProximity: %d\n", ptr->proximity);
+    fprintf(fp, "\t\t\tLength: %d\n", ptr->length);
+}
+DECL_NET_FREE_FUNC(SvcVoiceData) {
+    DECL_PTR(SvcVoiceData);
+    free(ptr->data);
+}
 
 // SvcPrint
 DECL_NET_PARSE_FUNC(SvcPrint) {
@@ -434,10 +486,32 @@ DECL_NET_FREE_FUNC(SvcPrint) {
 
 // SvcSounds
 DECL_NET_PARSE_FUNC(SvcSounds) {
+    DECL_PTR(SvcSounds);
+    ptr->reliable_sound = bits_read_one_bit(bits);
+
+    if (ptr->reliable_sound) {
+        ptr->size = 1;
+        ptr->length = bits_read_le_u8(bits);
+    }
+    else {
+        ptr->size = bits_read_le_u8(bits);
+        ptr->length = bits_read_le_u16(bits);
+    }
+
+    // SoundInfo[] parsing not implemented
+    ptr->data = bits_read_bits_arr(ptr->length, bits);
     return true;
 }
-DECL_NET_PRINT_FUNC(SvcSounds) {}
-DECL_NET_FREE_FUNC(SvcSounds) {}
+DECL_NET_PRINT_FUNC(SvcSounds) {
+    const DECL_PTR(SvcSounds);
+    fprintf(fp, "\t\t\tReliableSound: %s\n", ptr->reliable_sound ? "true" : "false");
+    fprintf(fp, "\t\t\tSize: %d\n", ptr->size);
+    fprintf(fp, "\t\t\tLength: %d\n", ptr->length);
+}
+DECL_NET_FREE_FUNC(SvcSounds) {
+    DECL_PTR(SvcSounds);
+    free(ptr->data);
+}
 
 // SvcSetView
 DECL_NET_PARSE_FUNC(SvcSetView) {
@@ -479,34 +553,109 @@ DECL_NET_FREE_FUNC(SvcCrosshairAngle) {}
 
 // SvcBspDecal
 DECL_NET_PARSE_FUNC(SvcBspDecal) {
-    return false;
+    DECL_PTR(SvcBspDecal);
+    ptr->pos = bits_read_vcoord(bits);
+    ptr->decal_texture_index = bits_read_bits(9, bits);
+    ptr->has_entity_index = bits_read_one_bit(bits);
+    if (ptr->has_entity_index) {
+        ptr->entity_index = bits_read_bits(11, bits);
+        ptr->model_index = bits_read_bits(11, bits);
+    }
+    ptr->low_priority = bits_read_one_bit(bits);
+    return true;
 }
-DECL_NET_PRINT_FUNC(SvcBspDecal) {}
+
+static float bitcoord_to_f32(BitCoord n) {
+    if (!n.exists)
+        return 0.0f;
+    float value = n.int_value + n.frac_value * (1.0f / (1 << COORD_FRACTIONAL_BITS));
+    if (n.sign) {
+        value = -value;
+    }
+    return value;
+}
+
+DECL_NET_PRINT_FUNC(SvcBspDecal) {
+    const DECL_PTR(SvcBspDecal);
+    if (ptr->pos.x.exists)
+        fprintf(fp, "\t\t\tPosX: %.3f\n", bitcoord_to_f32(ptr->pos.x));
+    if (ptr->pos.y.exists)
+        fprintf(fp, "\t\t\tPosY: %.3f\n", bitcoord_to_f32(ptr->pos.y));
+    if (ptr->pos.z.exists)
+        fprintf(fp, "\t\t\tPosZ: %.3f\n", bitcoord_to_f32(ptr->pos.z));
+    if (ptr->has_entity_index) {
+        fprintf(fp, "\t\t\tEntityIndex: %d\n", ptr->entity_index);
+        fprintf(fp, "\t\t\tModelIndex: %d\n", ptr->model_index);
+    }
+    fprintf(fp, "\t\t\tLowPriority: %s\n", ptr->low_priority ? "true" : "false");
+}
 DECL_NET_FREE_FUNC(SvcBspDecal) {}
 
 // SvcSplitScreen
 DECL_NET_PARSE_FUNC(SvcSplitScreen) {
-    return false;
+    DECL_PTR(SvcSplitScreen);
+    ptr->remove_user = bits_read_one_bit(bits);
+    ptr->length = bits_read_bits(11, bits);
+    // data parsing not implemented
+    ptr->data = bits_read_bits_arr(ptr->length, bits);
+    return true;
 }
-DECL_NET_PRINT_FUNC(SvcSplitScreen) {}
-DECL_NET_FREE_FUNC(SvcSplitScreen) {}
+DECL_NET_PRINT_FUNC(SvcSplitScreen) {
+    const DECL_PTR(SvcSplitScreen);
+    fprintf(fp, "\t\t\tRemoveUser: %s\n", ptr->remove_user ? "true" : "false");
+    fprintf(fp, "\t\t\tLength: %d\n", ptr->length);
+}
+DECL_NET_FREE_FUNC(SvcSplitScreen) {
+    DECL_PTR(SvcSplitScreen);
+    free(ptr->data);
+}
 
 // SvcUserMessage
 DECL_NET_PARSE_FUNC(SvcUserMessage) {
-    return false;
+    DECL_PTR(SvcUserMessage);
+    ptr->msg_type = bits_read_le_u8(bits);
+    ptr->length = bits_read_bits(demo_info.NE ? 12 : 11, bits);
+    // data parsing not implemented
+    ptr->data = bits_read_bits_arr(ptr->length, bits);
+    return true;
 }
-DECL_NET_PRINT_FUNC(SvcUserMessage) {}
-DECL_NET_FREE_FUNC(SvcUserMessage) {}
+DECL_NET_PRINT_FUNC(SvcUserMessage) {
+    const DECL_PTR(SvcUserMessage);
+    fprintf(fp, "\t\t\tMsgType: %d\n", ptr->msg_type);
+    fprintf(fp, "\t\t\tLength: %d\n", ptr->length);
+}
+DECL_NET_FREE_FUNC(SvcUserMessage) {
+    DECL_PTR(SvcUserMessage);
+    free(ptr->data);
+}
 
 // SvcEntityMessage
 DECL_NET_PARSE_FUNC(SvcEntityMessage) {
-    return false;
+    DECL_PTR(SvcEntityMessage);
+    ptr->entity_index = bits_read_bits(11, bits);
+    ptr->class_id = bits_read_bits(9, bits);
+    ptr->length = bits_read_bits(11, bits);
+    // data parsing not implemented
+    ptr->data = bits_read_bits_arr(ptr->length, bits);
+    return true;
 }
-DECL_NET_PRINT_FUNC(SvcEntityMessage) {}
-DECL_NET_FREE_FUNC(SvcEntityMessage) {}
+DECL_NET_PRINT_FUNC(SvcEntityMessage) {
+    const DECL_PTR(SvcEntityMessage);
+    fprintf(fp, "\t\t\tEntityIndex: %d\n", ptr->entity_index);
+    fprintf(fp, "\t\t\tClassId: %d\n", ptr->class_id);
+    fprintf(fp, "\t\t\tLength: %d\n", ptr->length);
+}
+DECL_NET_FREE_FUNC(SvcEntityMessage) {
+    DECL_PTR(SvcEntityMessage);
+    free(ptr->data);
+}
 
 // SvcGameEvent
 DECL_NET_PARSE_FUNC(SvcGameEvent) {
+    DECL_PTR(SvcGameEvent);
+    ptr->length = bits_read_bits(11, bits);
+    // GameEvent[] parsing not implemented
+
     return false;
 }
 DECL_NET_PRINT_FUNC(SvcGameEvent) {}
@@ -514,31 +663,93 @@ DECL_NET_FREE_FUNC(SvcGameEvent) {}
 
 // SvcPacketEntities
 DECL_NET_PARSE_FUNC(SvcPacketEntities) {
-    return false;
+    DECL_PTR(SvcPacketEntities);
+    ptr->max_entries = bits_read_bits(11, bits);
+    ptr->is_delta = bits_read_one_bit(bits);
+    if (ptr->is_delta) {
+        ptr->delta_from = bits_read_le_u32(bits);
+    }
+    ptr->base_line = bits_read_one_bit(bits);
+    ptr->updated_entries = bits_read_bits(11, bits);
+    ptr->length = bits_read_bits(20, bits);
+    ptr->update_baseline = bits_read_one_bit(bits);
+    // data parsing not implemented
+    ptr->data = bits_read_bits_arr(ptr->length, bits);
+    return true;
 }
-DECL_NET_PRINT_FUNC(SvcPacketEntities) {}
-DECL_NET_FREE_FUNC(SvcPacketEntities) {}
+DECL_NET_PRINT_FUNC(SvcPacketEntities) {
+    const DECL_PTR(SvcPacketEntities);
+    fprintf(fp, "\t\t\tMaxEntries: %d\n", ptr->max_entries);
+    fprintf(fp, "\t\t\tIsDelta: %s\n", ptr->is_delta ? "true" : "false");
+    if (ptr->is_delta) {
+        fprintf(fp, "\t\t\tDeltaFrom: %d\n", ptr->delta_from);
+    }
+    fprintf(fp, "\t\t\tBaseLine: %s\n", ptr->base_line ? "true" : "false");
+    fprintf(fp, "\t\t\tUpdatedEntries: %d\n", ptr->updated_entries);
+    fprintf(fp, "\t\t\tLength: %d\n", ptr->length);
+    fprintf(fp, "\t\t\tUpdateBaseline: %s\n", ptr->update_baseline ? "true" : "false");
+}
+DECL_NET_FREE_FUNC(SvcPacketEntities) {
+    DECL_PTR(SvcPacketEntities);
+    free(ptr->data);
+}
 
 // SvcTempEntities
 DECL_NET_PARSE_FUNC(SvcTempEntities) {
-    return false;
+    DECL_PTR(SvcTempEntities);
+    ptr->num_entries = bits_read_le_u8(bits);
+
+    if (demo_info.network_protocol == 24) {
+        ptr->length = bits_read_varuint32(bits);
+    }
+    else {
+        ptr->length = bits_read_bits(17, bits);
+    }
+
+    // data parsing not implemented
+    ptr->data = bits_read_bits_arr(ptr->length, bits);
+    return true;
 }
-DECL_NET_PRINT_FUNC(SvcTempEntities) {}
-DECL_NET_FREE_FUNC(SvcTempEntities) {}
+DECL_NET_PRINT_FUNC(SvcTempEntities) {
+    const DECL_PTR(SvcTempEntities);
+    fprintf(fp, "\t\t\tNumEntries: %d\n", ptr->num_entries);
+    fprintf(fp, "\t\t\tLength: %d\n", ptr->length);
+}
+DECL_NET_FREE_FUNC(SvcTempEntities) {
+    DECL_PTR(SvcTempEntities);
+    free(ptr->data);
+}
 
 // SvcPrefetch
 DECL_NET_PARSE_FUNC(SvcPrefetch) {
-    return false;
+    DECL_PTR(SvcPrefetch);
+    ptr->sound_index = bits_read_bits((demo_info.network_protocol == 24) ? 14 : 13, bits);
+    return true;
 }
-DECL_NET_PRINT_FUNC(SvcPrefetch) {}
+DECL_NET_PRINT_FUNC(SvcPrefetch) {
+    const DECL_PTR(SvcPrefetch);
+    fprintf(fp, "\t\t\tSoundIndex: %d\n", ptr->sound_index);
+}
 DECL_NET_FREE_FUNC(SvcPrefetch) {}
 
 // SvcMenu
 DECL_NET_PARSE_FUNC(SvcMenu) {
-    return false;
+    DECL_PTR(SvcMenu);
+    ptr->menu_type = bits_read_le_u16(bits);
+    ptr->length = bits_read_le_u32(bits);
+    // data parsing not implemented
+    ptr->data = bits_read_bits_arr(ptr->length, bits);
+    return true;
 }
-DECL_NET_PRINT_FUNC(SvcMenu) {}
-DECL_NET_FREE_FUNC(SvcMenu) {}
+DECL_NET_PRINT_FUNC(SvcMenu) {
+    const DECL_PTR(SvcMenu);
+    fprintf(fp, "\t\t\tMenuType: %d\n", ptr->menu_type);
+    fprintf(fp, "\t\t\tLength: %d\n", ptr->length);
+}
+DECL_NET_FREE_FUNC(SvcMenu) {
+    DECL_PTR(SvcMenu);
+    free(ptr->data);
+}
 
 // SvcGameEventList
 DECL_NET_PARSE_FUNC(SvcGameEventList) {
@@ -566,24 +777,45 @@ DECL_NET_FREE_FUNC(SvcGetCvarValue) {
 
 // SvcCmdKeyValues
 DECL_NET_PARSE_FUNC(SvcCmdKeyValues) {
-    return false;
+    DECL_PTR(SvcCmdKeyValues);
+    ptr->length = bits_read_le_u32(bits);
+    // data parsing not implemented
+    ptr->data = malloc_s(ptr->length);
+    bits_read_bytes((char*)ptr->data, ptr->length, bits);
+    return true;
 }
-DECL_NET_PRINT_FUNC(SvcCmdKeyValues) {}
-DECL_NET_FREE_FUNC(SvcCmdKeyValues) {}
+DECL_NET_PRINT_FUNC(SvcCmdKeyValues) {
+    const DECL_PTR(SvcPaintmapData);
+    fprintf(fp, "\t\t\tLength: %d\n", ptr->length);
+}
+DECL_NET_FREE_FUNC(SvcCmdKeyValues) {
+    DECL_PTR(SvcPaintmapData);
+    free(ptr->data);
+}
 
 // SvcPaintmapData
 DECL_NET_PARSE_FUNC(SvcPaintmapData) {
-    return false;
+    DECL_PTR(SvcPaintmapData);
+    ptr->length = bits_read_le_u32(bits);
+    // data parsing not implemented
+    ptr->data = bits_read_bits_arr(ptr->length, bits);
+    return true;
 }
-DECL_NET_PRINT_FUNC(SvcPaintmapData) {}
-DECL_NET_FREE_FUNC(SvcPaintmapData) {}
+DECL_NET_PRINT_FUNC(SvcPaintmapData) {
+    const DECL_PTR(SvcPaintmapData);
+    fprintf(fp, "\t\t\tLength: %d\n", ptr->length);
+}
+DECL_NET_FREE_FUNC(SvcPaintmapData) {
+    DECL_PTR(SvcPaintmapData);
+    free(ptr->data);
+}
 
 // Invalid
-DECL_NET_PARSE_FUNC(NetInvalid) {
+DECL_NET_PARSE_FUNC(NetSvcInvalid) {
     return false;
 }
-DECL_NET_PRINT_FUNC(NetInvalid) {}
-DECL_NET_FREE_FUNC(NetInvalid) {}
+DECL_NET_PRINT_FUNC(NetSvcInvalid) {}
+DECL_NET_FREE_FUNC(NetSvcInvalid) {}
 
 // settings
 const NetSvcMessageSettings oe_net_msg_settings = {

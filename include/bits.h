@@ -3,6 +3,7 @@
 
 #include <stdio.h>
 #include <stdint.h>
+#include <stdbool.h>
 
 typedef struct {
     size_t bit_size;
@@ -12,6 +13,21 @@ typedef struct {
     uint8_t offset;
     uint8_t* bits;
 } BitStream;
+
+#define COORD_INTEGER_BITS 14
+#define COORD_FRACTIONAL_BITS 5
+typedef struct {
+    bool exists;
+    bool has_int;
+    bool has_frac;
+    bool sign;
+    uint16_t int_value;
+    uint16_t frac_value;
+} BitCoord;
+
+typedef struct {
+    BitCoord x, y, z;
+} VectorCoord;
 
 BitStream* bits_init(uint8_t* data, size_t byte_size);
 BitStream* bits_load_file(char* path);
@@ -28,6 +44,7 @@ float bits_read_le_f32(BitStream* bits);
 uint32_t bits_read_bits(size_t bit_size, BitStream* bits);
 
 uint32_t bits_read_varuint32(BitStream* bits);
+VectorCoord bits_read_vcoord(BitStream* bits);
 
 uint8_t* bits_read_bits_arr(size_t bit_size, BitStream* bits);
 size_t bits_read_bytes(char* buf, size_t len, BitStream* bits);
