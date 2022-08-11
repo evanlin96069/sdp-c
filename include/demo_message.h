@@ -72,13 +72,15 @@ typedef struct {
     FreeMessageFunc free;
 } DemoMessageTable;
 
-extern const DemoMessageTable portal_3420_massage_table[MESSAGE_COUNT];
-extern const DemoMessageTable portal_5135_massage_table[MESSAGE_COUNT];
-extern const DemoMessageTable ne_massage_table[MESSAGE_COUNT];
+typedef struct {
+    const char* names[MESSAGE_COUNT];
+    const DemoMessageID enum_ids[MESSAGE_COUNT];
+    const DemoMessageTable func_table[MESSAGE_COUNT];
+} DemoMessageSettings;
 
-extern const DemoMessageID portal_3420_massage_ids[MESSAGE_COUNT];
-extern const DemoMessageID portal_5135_massage_ids[MESSAGE_COUNT];
-extern const DemoMessageID ne_massage_ids[MESSAGE_COUNT];
+extern const DemoMessageSettings portal_3420_msg_settings;
+extern const DemoMessageSettings portal_5135_msg_settings;
+extern const DemoMessageSettings ne_msg_settings;
 
 typedef struct {
     int32_t flags;

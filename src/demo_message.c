@@ -7,7 +7,7 @@
 #define DECL_PRINT_FUNC(type) static void PRINT_FUNC_NAME(type)(const DemoMessageData* thisptr, FILE* fp)
 #define DECL_FREE_FUNC(type) static void FREE_FUNC_NAME(type)(DemoMessageData* thisptr)
 
-// SignOn
+// Packet
 
 static void parse_cmd_info(CmdInfo* info, BitStream* bits) {
     info->flags = bits_read_le_u32(bits);
@@ -31,8 +31,8 @@ static void parse_cmd_info(CmdInfo* info, BitStream* bits) {
     info->local_view_angles2[2] = bits_read_le_f32(bits);
 }
 
-DECL_PARSE_FUNC(SignOn) {
-    DECL_PTR(SignOn);
+DECL_PARSE_FUNC(Packet) {
+    DECL_PTR(Packet);
     if (!demo_info.quick_mode) {
         for (int i = 0; i < demo_info.MSSC; i++) {
             parse_cmd_info(&ptr->packet_info[i], bits);
@@ -48,28 +48,31 @@ DECL_PARSE_FUNC(SignOn) {
     size_t end_index = bits->current + (byte_size << 3);
     if (!demo_info.quick_mode) {
         bool success = true;
+        uint32_t count = 0;
         while (end_index - bits->current > 6) {
+            count++;
             NetSvcMessage msg = { 0 };
             // parse net message
             NetSvcMessageType type = msg.type = bits_read_bits(6, bits);
-            if (type < NET_MSG_COUNT && demo_info.net_msg_ids[type] != NetInvalid_MSG) {
-                debug("Parsing net message type %d.\n", type);
-                success = demo_info.net_msg_table[type].parse(&msg.data, bits);
+            if (type < NET_MSG_COUNT) {
+                const char* name = demo_info.net_msg_settings->names[type];
+                debug("Parsing NET/SVC message %s (%d) at %d.\n", name, type, count);
+                success = demo_info.net_msg_settings->func_table[type].parse(&msg.data, bits);
                 if (!success) {
-                    warning("Failed to parse NET/SVC message tpye %d at %d.\n", type, (uint32_t)ptr->data.size + 1);
+                    warning("Failed to parse NET/SVC message %s (%d) at %d.\n", name, type, count);
                     break;
                 }
                 vector_push(ptr->data, msg);
             }
             else {
                 success = false;
-                warning("Unexpected NET/SVC message type %d at %d.\n", type, (uint32_t)ptr->data.size + 1);
+                warning("Unexpected NET/SVC message type %d at %d.\n", type, count);
                 break;
             }
         }
         vector_shrink(ptr->data);
         if (bits->current > end_index || !success) {
-            warning("NET/SVC Message not parse correctly.\n");
+            warning("Packet not parsed correctly.\n");
         }
     }
     bits_setpos(end_index, bits);
@@ -86,7 +89,7 @@ static void print_cmd_info(const CmdInfo* info, FILE* fp) {
     fprintf(fp, "\t\tLocalViewAngles2: (%.3f, %.3f, %.3f)\n", info->local_view_angles2[0], info->local_view_angles2[1], info->local_view_angles2[2]);
 }
 
-static void print_packet_data(const DemoMessageData* thisptr, FILE* fp) {
+DECL_PRINT_FUNC(Packet) {
     const DECL_PTR(Packet);
     for (int i = 0; i < demo_info.MSSC; i++) {
         fprintf(fp, "\tPacketInfo[%d]:\n", i);
@@ -94,46 +97,41 @@ static void print_packet_data(const DemoMessageData* thisptr, FILE* fp) {
     }
     fprintf(fp, "\tInSequence: %d\n", ptr->in_sequence);
     fprintf(fp, "\tOutSequence: %d\n", ptr->out_sequence);
+    fprintf(fp, "\tNET/SVC-Messages:\n");
     for (size_t i = 0; i < ptr->data.size; i++) {
         NetSvcMessage* msg = &ptr->data.data[i];
-        fprintf(fp, "\tNET/SVC-Message[%d]:\n", (uint32_t)i);
-        demo_info.net_msg_table[msg->type].print(&msg->data, fp);
+        NetSvcMessageType type = msg->type;
+        const char* name = demo_info.net_msg_settings->names[type];
+        fprintf(fp, "\t\t%s (%d)\n", name, type);
+        demo_info.net_msg_settings->func_table[type].print(&msg->data, fp);
     }
 }
-
-DECL_PRINT_FUNC(SignOn) {
-    fprintf(fp, "SignOn\n");
-    print_packet_data(thisptr, fp);
-}
-DECL_FREE_FUNC(SignOn) {
-    DECL_PTR(SignOn);
+DECL_FREE_FUNC(Packet) {
+    DECL_PTR(Packet);
     if (!demo_info.quick_mode) {
         for (size_t i = 0; i < ptr->data.size; i++) {
             NetSvcMessage* msg = &ptr->data.data[i];
-            demo_info.net_msg_table[msg->type].free(&msg->data);
+            demo_info.net_msg_settings->func_table[msg->type].free(&msg->data);
         }
     }
 }
 
-// Packet
-DECL_PARSE_FUNC(Packet) {
-    return parse_SignOn(thisptr, bits);
+// SignOn
+DECL_PARSE_FUNC(SignOn) {
+    return parse_Packet(thisptr, bits);
 }
-DECL_PRINT_FUNC(Packet) {
-    fprintf(fp, "Packet\n");
-    print_packet_data(thisptr, fp);
+DECL_PRINT_FUNC(SignOn) {
+    print_Packet(thisptr, fp);
 }
-DECL_FREE_FUNC(Packet) {
-    free_SignOn(thisptr);
+DECL_FREE_FUNC(SignOn) {
+    free_Packet(thisptr);
 }
 
 // SyncTick
 DECL_PARSE_FUNC(SyncTick) {
     return true;
 }
-DECL_PRINT_FUNC(SyncTick) {
-    fprintf(fp, "SyncTick\n");
-}
+DECL_PRINT_FUNC(SyncTick) {}
 DECL_FREE_FUNC(SyncTick) {}
 
 // ConsoleCmd
@@ -151,7 +149,6 @@ DECL_PARSE_FUNC(ConsoleCmd) {
 }
 DECL_PRINT_FUNC(ConsoleCmd) {
     const DECL_PTR(ConsoleCmd);
-    fprintf(fp, "ConsoleCmd\n");
     fprintf(fp, "\tData: %s\n", (char*)ptr->data);
 }
 DECL_FREE_FUNC(ConsoleCmd) {
@@ -212,7 +209,7 @@ DECL_PARSE_FUNC(UserCmd) {
         ptr->size = byte_size;
         parse_usercmd(&ptr->data, bits);
         if (bits->current > end_index) {
-            warning("Usercmd not parse correctly.\n");
+            warning("Usercmd not parsed correctly.\n");
         }
     }
     bits_setpos(end_index, bits);
@@ -221,7 +218,6 @@ DECL_PARSE_FUNC(UserCmd) {
 
 DECL_PRINT_FUNC(UserCmd) {
     const DECL_PTR(UserCmd);
-    fprintf(fp, "UserCmd\n");
     const UserCmdInfo* cmd = &ptr->data;
     if (cmd->has_command_number)
         fprintf(fp, "\tCommandNumber: %d\n", cmd->command_number);
@@ -268,18 +264,14 @@ DECL_PARSE_FUNC(DataTables) {
     bits_setpos(end_index, bits);
     return true;
 }
-DECL_PRINT_FUNC(DataTables) {
-    fprintf(fp, "DataTables\n");
-}
+DECL_PRINT_FUNC(DataTables) {}
 DECL_FREE_FUNC(DataTables) {}
 
 // Stop
 DECL_PARSE_FUNC(Stop) {
     return true;
 }
-DECL_PRINT_FUNC(Stop) {
-    fprintf(fp, "Stop\n");
-}
+DECL_PRINT_FUNC(Stop) {}
 DECL_FREE_FUNC(Stop) {}
 
 // CustomData
@@ -293,7 +285,6 @@ DECL_PARSE_FUNC(CustomData) {
 }
 DECL_PRINT_FUNC(CustomData) {
     const DECL_PTR(CustomData);
-    fprintf(fp, "CustomData\n");
     fprintf(fp, "\tUnknown: %d\n", ptr->unknown);
     fprintf(fp, "\tSize: %d\n", ptr->size);
 }
@@ -315,9 +306,7 @@ DECL_PARSE_FUNC(StringTables) {
     bits_setpos(end_index, bits);
     return true;
 }
-DECL_PRINT_FUNC(StringTables) {
-    fprintf(fp, "StringTables\n");
-}
+DECL_PRINT_FUNC(StringTables) {}
 DECL_FREE_FUNC(StringTables) {}
 
 // Invalid
@@ -327,23 +316,19 @@ DECL_PARSE_FUNC(Invalid) {
 DECL_PRINT_FUNC(Invalid) {}
 DECL_FREE_FUNC(Invalid) {}
 
-// // function tables
-const DemoMessageTable portal_3420_massage_table[MESSAGE_COUNT] = {
-    MACRO_PORTAL_3420_MESSAGES(DECL_MSG_IN_TABLE)
+// settings
+const DemoMessageSettings portal_3420_msg_settings = {
+    {MACRO_PORTAL_3420_MESSAGES(DECL_MSG_IN_NAME)},
+    {MACRO_PORTAL_3420_MESSAGES(DECL_MSG_IN_ENUM)},
+    {MACRO_PORTAL_3420_MESSAGES(DECL_MSG_IN_TABLE)}
 };
-const DemoMessageTable portal_5135_massage_table[MESSAGE_COUNT] = {
-    MACRO_PORTAL_5135_MESSAGES(DECL_MSG_IN_TABLE)
+const DemoMessageSettings portal_5135_msg_settings = {
+    {MACRO_PORTAL_5135_MESSAGES(DECL_MSG_IN_NAME)},
+    {MACRO_PORTAL_5135_MESSAGES(DECL_MSG_IN_ENUM)},
+    {MACRO_PORTAL_5135_MESSAGES(DECL_MSG_IN_TABLE)}
 };
-const DemoMessageTable ne_massage_table[MESSAGE_COUNT] = {
-    MACRO_NE_MESSAGES(DECL_MSG_IN_TABLE)
-};
-
-const DemoMessageID portal_3420_massage_ids[MESSAGE_COUNT] = {
-    MACRO_PORTAL_3420_MESSAGES(DECL_MSG_IN_ENUM)
-};
-const DemoMessageID portal_5135_massage_ids[MESSAGE_COUNT] = {
-    MACRO_PORTAL_5135_MESSAGES(DECL_MSG_IN_ENUM)
-};
-const DemoMessageID ne_massage_ids[MESSAGE_COUNT] = {
-    MACRO_NE_MESSAGES(DECL_MSG_IN_ENUM)
+const DemoMessageSettings ne_msg_settings = {
+    {MACRO_NE_MESSAGES(DECL_MSG_IN_NAME)},
+    {MACRO_NE_MESSAGES(DECL_MSG_IN_ENUM)},
+    {MACRO_NE_MESSAGES(DECL_MSG_IN_TABLE)}
 };

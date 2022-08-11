@@ -22,10 +22,8 @@ typedef struct {
     bool NE;
     float tickrate;
 
-    const DemoMessageTable* msg_table;
-    const DemoMessageID* msg_ids;
-    const NetSvcMessageTable* net_msg_table;
-    const NetSvcMessageID* net_msg_ids;
+    const DemoMessageSettings* msg_settings;
+    const NetSvcMessageSettings* net_msg_settings;
 
     bool quick_mode;
 } DemoInfo;

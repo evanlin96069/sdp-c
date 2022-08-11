@@ -136,7 +136,9 @@ typedef struct {
 #define PARSE_FUNC_NAME(type) parse_ ## type
 #define PRINT_FUNC_NAME(type) print_ ## type
 #define FREE_FUNC_NAME(type) free_ ## type
+
 #define DECL_PTR(type) type* ptr = &thisptr->type ## _message;
+
 #define DECL_MSG_IN_TABLE(x)    \
 {                               \
     PARSE_FUNC_NAME(x),         \
@@ -144,11 +146,16 @@ typedef struct {
     FREE_FUNC_NAME(x)           \
 },
 
-extern const NetSvcMessageTable oe_net_massage_table[NET_MSG_COUNT];
-extern const NetSvcMessageTable ne_net_massage_table[NET_MSG_COUNT];
+#define DECL_MSG_IN_NAME(x) #x,
 
-extern const NetSvcMessageID oe_net_massage_ids[NET_MSG_COUNT];
-extern const NetSvcMessageID ne_net_massage_ids[NET_MSG_COUNT];
+typedef struct {
+    const char* names[NET_MSG_COUNT];
+    const NetSvcMessageID enum_ids[NET_MSG_COUNT];
+    const NetSvcMessageTable func_table[NET_MSG_COUNT];
+} NetSvcMessageSettings;
+
+extern const NetSvcMessageSettings oe_net_msg_settings;
+extern const NetSvcMessageSettings ne_net_msg_settings;
 
 typedef struct {
     uint8_t empty;

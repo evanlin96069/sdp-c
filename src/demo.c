@@ -72,47 +72,38 @@ int demo_parse(Demo* demo, bool quick_mode) {
         demo_info.NE = false;
         demo_info.tickrate = 66.6666f;
         demo_info.game = (demo_info.network_protocol == 7) ? DMOMM : UNKNOWN;
-        demo_info.net_msg_table = oe_net_massage_table;
-        demo_info.net_msg_ids = oe_net_massage_ids;
-        demo_info.msg_table = portal_3420_massage_table;
-        demo_info.msg_ids = portal_3420_massage_ids;
+        demo_info.msg_settings = &portal_3420_msg_settings;
+        demo_info.net_msg_settings = &oe_net_msg_settings;
         break;
     case 3:
         demo_info.NE = false;
         demo_info.tickrate = 66.6666f;
-        demo_info.net_msg_table = oe_net_massage_table;
-        demo_info.net_msg_ids = oe_net_massage_ids;
+        demo_info.net_msg_settings = &oe_net_msg_settings;
         switch (demo_info.network_protocol)
         {
         case 7:
             demo_info.game = HL2_OE;
-            demo_info.msg_table = portal_3420_massage_table;
-            demo_info.msg_ids = portal_3420_massage_ids;
+            demo_info.msg_settings = &portal_3420_msg_settings;
             break;
         case 11:
             demo_info.game = PORTAL_3258;
-            demo_info.msg_table = portal_3420_massage_table;
-            demo_info.msg_ids = portal_3420_massage_ids;
+            demo_info.msg_settings = &portal_3420_msg_settings;
             break;
         case 14:
             demo_info.game = PORTAL_3420;
-            demo_info.msg_table = portal_3420_massage_table;
-            demo_info.msg_ids = portal_3420_massage_ids;
+            demo_info.msg_settings = &portal_3420_msg_settings;
             break;
         case 15:
             demo_info.game = PORTAL_5135;
-            demo_info.msg_table = portal_5135_massage_table;
-            demo_info.msg_ids = portal_5135_massage_ids;
+            demo_info.msg_settings = &portal_5135_msg_settings;
             break;
         case 24:
             demo_info.game = PORTAL_1910503;
-            demo_info.msg_table = portal_5135_massage_table;
-            demo_info.msg_ids = portal_5135_massage_ids;
+            demo_info.msg_settings = &portal_5135_msg_settings;
             break;
         default:
             demo_info.game = UNKNOWN;
-            demo_info.msg_table = portal_5135_massage_table;
-            demo_info.msg_ids = portal_5135_massage_ids;
+            demo_info.msg_settings = &portal_5135_msg_settings;
             break;
         }
         break;
@@ -120,10 +111,8 @@ int demo_parse(Demo* demo, bool quick_mode) {
         demo_info.NE = true;
         demo_info.tickrate = 60.0f;
         demo_info.game = (demo_info.network_protocol == 2001) ? PORTAL_2 : UNKNOWN;
-        demo_info.net_msg_table = ne_net_massage_table;
-        demo_info.net_msg_ids = ne_net_massage_ids;
-        demo_info.msg_table = ne_massage_table;
-        demo_info.msg_ids = ne_massage_ids;
+        demo_info.msg_settings = &ne_msg_settings;
+        demo_info.net_msg_settings = &ne_net_msg_settings;
         break;
     default:
         demo_info.game = UNKNOWN;
@@ -132,7 +121,9 @@ int demo_parse(Demo* demo, bool quick_mode) {
     demo_info.MSSC = (demo_info.game == PORTAL_2) ? 2 : 1;
 
     DemoMessageType type;
+    uint32_t count = 0;
     do {
+        count++;
         DemoMessage msg = { 0 };
         type = msg.type = bits_read_le_u8(bits);
         // Last byte is cut off in demos, use the previous byte
@@ -151,16 +142,21 @@ int demo_parse(Demo* demo, bool quick_mode) {
         }
 
         // parse message
-        if (type < MESSAGE_COUNT && demo_info.msg_ids[type] != Invalid_MSG) {
-            debug("Parsing message type %d.\n", type);
-            demo_info.msg_table[type].parse(&msg.data, bits);
+        if (type < MESSAGE_COUNT) {
+            const char* name = demo_info.msg_settings->names[type];
+            debug("Parsing message type %s (%d) at %d.\n", name, type, count);
+            bool success = demo_info.msg_settings->func_table[type].parse(&msg.data, bits);
+            if (!success) {
+                warning("Failed to parse message %s (%d) at %d.\n", name, type, count);
+                break;
+            }
             vector_push(demo->messages, msg);
         }
         else {
-            error("Unexpected type %d at message %d while parsing demo message.\n", type, (uint32_t)demo->messages.size + 1);
+            error("Unexpected message type %d at %d.\n", type, count);
             break;
         }
-    } while (type != demo_info.msg_ids[Stop_MSG]);
+    } while (type != demo_info.msg_settings->enum_ids[Stop_MSG]);
     vector_shrink(demo->messages);
     bits_free(bits);
     return measured_ticks;
@@ -176,8 +172,10 @@ void demo_verbose(const Demo* demo, FILE* fp) {
 
     for (size_t i = 0; i < demo->messages.size; i++) {
         const DemoMessage* msg = &demo->messages.data[i];
-        fprintf(fp, "[%d] ", msg->tick);
-        demo_info.msg_table->print(&msg->data, fp);
+        DemoMessageType type = msg->type;
+        const char* name = demo_info.msg_settings->names[type];
+        fprintf(fp, "[%d] %s (%d)\n", msg->tick, name, type);
+        demo_info.msg_settings->func_table[type].print(&msg->data, fp);
         fprintf(fp, "\n");
     }
 }
@@ -185,9 +183,9 @@ void demo_verbose(const Demo* demo, FILE* fp) {
 void demo_gen_tas_script(const Demo* demo, FILE* fp) {
     fprintf(fp, "unpause;\n");
 
-    int stop = demo_info.msg_ids[Stop_MSG];
-    int console_cmd = demo_info.msg_ids[ConsoleCmd_MSG];
-    int user_cmd = demo_info.msg_ids[UserCmd_MSG];
+    int stop = demo_info.msg_settings->enum_ids[Stop_MSG];
+    int console_cmd = demo_info.msg_settings->enum_ids[ConsoleCmd_MSG];
+    int user_cmd = demo_info.msg_settings->enum_ids[UserCmd_MSG];
 
     for (size_t i = 0; i < demo->messages.size; i++) {
         const DemoMessage* msg = &demo->messages.data[i];
@@ -213,7 +211,7 @@ void demo_free(Demo* demo) {
     if (!demo) return;
     for (size_t i = 0; i < demo->messages.size; i++) {
         DemoMessage* msg = &demo->messages.data[i];
-        demo_info.msg_table[msg->type].free(&msg->data);
+        demo_info.msg_settings->func_table[msg->type].free(&msg->data);
     }
     free(demo->messages.data);
     free(demo);
