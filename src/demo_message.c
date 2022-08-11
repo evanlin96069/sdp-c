@@ -1,8 +1,9 @@
 #include "demo_message.h"
 #include "demo_info.h"
 #include "alloc.h"
+#include "print.h"
 
-#define DECL_PARSE_FUNC(type) static void PARSE_FUNC_NAME(type)(DemoMessageData* thisptr, BitStream* bits)
+#define DECL_PARSE_FUNC(type) static bool PARSE_FUNC_NAME(type)(DemoMessageData* thisptr, BitStream* bits)
 #define DECL_PRINT_FUNC(type) static void PRINT_FUNC_NAME(type)(const DemoMessageData* thisptr, FILE* fp)
 #define DECL_FREE_FUNC(type) static void FREE_FUNC_NAME(type)(DemoMessageData* thisptr)
 
@@ -46,25 +47,33 @@ DECL_PARSE_FUNC(SignOn) {
     size_t byte_size = ptr->size = bits_read_le_u32(bits);
     size_t end_index = bits->current + (byte_size << 3);
     if (!demo_info.quick_mode) {
+        bool success = true;
         while (end_index - bits->current > 6) {
             NetSvcMessage msg = { 0 };
             // parse net message
             NetSvcMessageType type = msg.type = bits_read_bits(6, bits);
             if (type < NET_MSG_COUNT && demo_info.net_msg_ids[type] != NetInvalid_MSG) {
-                demo_info.net_msg_table[type].parse(&msg.data, bits);
+                debug("Parsing net message type %d.\n", type);
+                success = demo_info.net_msg_table[type].parse(&msg.data, bits);
+                if (!success) {
+                    warning("Failed to parse NET/SVC message tpye %d at %d.\n", type, (uint32_t)ptr->data.size + 1);
+                    break;
+                }
                 vector_push(ptr->data, msg);
             }
             else {
-                fprintf(stderr, "[ERROR] Unexpected type %d at %d while parsing NET/SVC message.\n", type, (uint32_t)ptr->data.size + 1);
+                success = false;
+                warning("Unexpected NET/SVC message type %d at %d.\n", type, (uint32_t)ptr->data.size + 1);
                 break;
             }
         }
         vector_shrink(ptr->data);
-    }
-    if (bits->current > end_index) {
-        fprintf(stderr, "[WARNING] NET/SVC Message not parse correctly.\n");
+        if (bits->current > end_index || !success) {
+            warning("NET/SVC Message not parse correctly.\n");
+        }
     }
     bits_setpos(end_index, bits);
+    return true;
 }
 
 static void print_cmd_info(const CmdInfo* info, FILE* fp) {
@@ -85,9 +94,8 @@ static void print_packet_data(const DemoMessageData* thisptr, FILE* fp) {
     }
     fprintf(fp, "\tInSequence: %d\n", ptr->in_sequence);
     fprintf(fp, "\tOutSequence: %d\n", ptr->out_sequence);
-    const Vector_NetSvcMessage* net_messages = &ptr->data;
-    for (size_t i = 0; i < net_messages->size; i++) {
-        NetSvcMessage* msg = &net_messages->data[i];
+    for (size_t i = 0; i < ptr->data.size; i++) {
+        NetSvcMessage* msg = &ptr->data.data[i];
         fprintf(fp, "\tNET/SVC-Message[%d]:\n", (uint32_t)i);
         demo_info.net_msg_table[msg->type].print(&msg->data, fp);
     }
@@ -100,9 +108,8 @@ DECL_PRINT_FUNC(SignOn) {
 DECL_FREE_FUNC(SignOn) {
     DECL_PTR(SignOn);
     if (!demo_info.quick_mode) {
-        Vector_NetSvcMessage* net_messages = &ptr->data;
-        for (size_t i = 0; i < net_messages->size; i++) {
-            NetSvcMessage* msg = &net_messages->data[i];
+        for (size_t i = 0; i < ptr->data.size; i++) {
+            NetSvcMessage* msg = &ptr->data.data[i];
             demo_info.net_msg_table[msg->type].free(&msg->data);
         }
     }
@@ -110,7 +117,7 @@ DECL_FREE_FUNC(SignOn) {
 
 // Packet
 DECL_PARSE_FUNC(Packet) {
-    parse_SignOn(thisptr, bits);
+    return parse_SignOn(thisptr, bits);
 }
 DECL_PRINT_FUNC(Packet) {
     fprintf(fp, "Packet\n");
@@ -121,7 +128,9 @@ DECL_FREE_FUNC(Packet) {
 }
 
 // SyncTick
-DECL_PARSE_FUNC(SyncTick) {}
+DECL_PARSE_FUNC(SyncTick) {
+    return true;
+}
 DECL_PRINT_FUNC(SyncTick) {
     fprintf(fp, "SyncTick\n");
 }
@@ -138,6 +147,7 @@ DECL_PARSE_FUNC(ConsoleCmd) {
         bits_read_bytes(ptr->data, byte_size, bits);
     }
     bits_setpos(end_index, bits);
+    return true;
 }
 DECL_PRINT_FUNC(ConsoleCmd) {
     const DECL_PTR(ConsoleCmd);
@@ -202,10 +212,11 @@ DECL_PARSE_FUNC(UserCmd) {
         ptr->size = byte_size;
         parse_usercmd(&ptr->data, bits);
         if (bits->current > end_index) {
-            fprintf(stderr, "[WARNING] Usercmd not parse correctly.\n");
+            warning("Usercmd not parse correctly.\n");
         }
     }
     bits_setpos(end_index, bits);
+    return true;
 }
 
 DECL_PRINT_FUNC(UserCmd) {
@@ -255,6 +266,7 @@ DECL_PARSE_FUNC(DataTables) {
         bits_skip(byte_size << 3, bits);
     }
     bits_setpos(end_index, bits);
+    return true;
 }
 DECL_PRINT_FUNC(DataTables) {
     fprintf(fp, "DataTables\n");
@@ -262,7 +274,9 @@ DECL_PRINT_FUNC(DataTables) {
 DECL_FREE_FUNC(DataTables) {}
 
 // Stop
-DECL_PARSE_FUNC(Stop) {}
+DECL_PARSE_FUNC(Stop) {
+    return true;
+}
 DECL_PRINT_FUNC(Stop) {
     fprintf(fp, "Stop\n");
 }
@@ -275,6 +289,7 @@ DECL_PARSE_FUNC(CustomData) {
     uint32_t byte_size = ptr->size = bits_read_le_u32(bits);
     ptr->data = (uint8_t*)malloc_s(byte_size);
     bits_read_bytes((char*)ptr->data, byte_size, bits);
+    return true;
 }
 DECL_PRINT_FUNC(CustomData) {
     const DECL_PTR(CustomData);
@@ -298,6 +313,7 @@ DECL_PARSE_FUNC(StringTables) {
         bits_skip(byte_size << 3, bits);
     }
     bits_setpos(end_index, bits);
+    return true;
 }
 DECL_PRINT_FUNC(StringTables) {
     fprintf(fp, "StringTables\n");
@@ -305,7 +321,9 @@ DECL_PRINT_FUNC(StringTables) {
 DECL_FREE_FUNC(StringTables) {}
 
 // Invalid
-DECL_PARSE_FUNC(Invalid) {}
+DECL_PARSE_FUNC(Invalid) {
+    return false;
+}
 DECL_PRINT_FUNC(Invalid) {}
 DECL_FREE_FUNC(Invalid) {}
 

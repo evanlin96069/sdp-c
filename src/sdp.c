@@ -3,6 +3,7 @@
 #include <string.h>
 #include "demo.h"
 #include "demo_info.h"
+#include "print.h"
 
 int get_build_number();
 
@@ -14,7 +15,8 @@ enum {
 
 int main(int argc, char* argv[]) {
     if (argc < 2) {
-        printf("Usage: sdp [options] <demo>\n");
+        error("Usage: sdp [options] <demo>\n");
+        return 1;
     }
 
     int build_number = get_build_number();
@@ -48,7 +50,7 @@ int main(int argc, char* argv[]) {
                 output_file = argv[++i];
             }
             else {
-                fprintf(stderr, "[ERROR] Missing filename after \"-o\"\n");
+                error("Missing filename after \"-o\"\n");
                 return 1;
             }
         }
@@ -56,16 +58,16 @@ int main(int argc, char* argv[]) {
             input_file = argv[i];
         }
         else if (argv[i][0] == '-') {
-            fprintf(stderr, "[ERROR] Unrecognized command line option \"%s\"\n", argv[i]);
+            error("Unrecognized command line option \"%s\"\n", argv[i]);
             return 1;
         }
         else {
-            fprintf(stderr, "[ERROR] Too many input files.\n");
+            error("Too many input files.\n");
             return 1;
         }
     }
     if (!input_file) {
-        fprintf(stderr, "[ERROR] No input file.\n");
+        error("No input file.\n");
         return 1;
     }
     if (mode != QUICK_MODE && !output_file) {
@@ -80,12 +82,12 @@ int main(int argc, char* argv[]) {
     Demo* demo = new_demo(input_file);
 
     if (mode != QUICK_MODE) {
-        printf("[INFO] Parsing demo...\n");
+        info("Parsing demo...\n");
     }
     int measured_ticks = demo_parse(demo, mode == QUICK_MODE);
     if (measured_ticks < 0) {
         demo_free(demo);
-        fprintf(stderr, "[ERROR] Error while parsing demo.\n");
+        error("Error while parsing demo.\n");
         return 1;
     }
     if (mode == QUICK_MODE) {
@@ -106,19 +108,19 @@ int main(int argc, char* argv[]) {
         printf("Measured time:      %.3f\n", measured_ticks / demo_info.tickrate);
     }
     else if (mode == VERBOSE_MODE) {
-        printf("[INFO] Dumping verbose output...\n");
+        info("Dumping verbose output...\n");
         FILE* output = fopen(output_file, "w");
         if (!output) {
-            fprintf(stderr, "Cannot create output file %s.\n", output_file);
+            error("Cannot create output file %s.\n", output_file);
             demo_free(demo);
             return 1;
         }
         demo_verbose(demo, output);
         fclose(output);
-        printf("[INFO] Text file %s created.\n", output_file);
+        info("Text file %s created.\n", output_file);
     }
     else if (mode == TAS_MODE) {
-        printf("[INFO] Creating TAS script...\n");
+        info("Creating TAS script...\n");
         FILE* output = fopen(output_file, "w");
         if (!output) {
             fprintf(stderr, "Cannot create output file %s.\n", output_file);
@@ -127,7 +129,7 @@ int main(int argc, char* argv[]) {
         }
         demo_gen_tas_script(demo, output);
         fclose(output);
-        printf("[INFO] TAS script %s created.\n", output_file);
+        info("TAS script %s created.\n", output_file);
     }
 
     demo_free(demo);

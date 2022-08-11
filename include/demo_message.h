@@ -62,7 +62,7 @@ typedef enum {
 typedef struct _DemoMessage DemoMessage;
 typedef union _DemoMessageData DemoMessageData;
 
-typedef void (*ParseMessageFunc)(DemoMessageData* thisptr, BitStream* bits);
+typedef bool (*ParseMessageFunc)(DemoMessageData* thisptr, BitStream* bits);
 typedef void (*PrintMessageFunc)(const DemoMessageData* thisptr, FILE* fp);
 typedef void (*FreeMessageFunc)(DemoMessageData* thisptr);
 

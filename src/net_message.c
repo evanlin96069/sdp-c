@@ -2,7 +2,7 @@
 #include "demo_info.h"
 #include "alloc.h"
 
-#define DECL_NET_PARSE_FUNC(type) static void PARSE_FUNC_NAME(type)(NetSvcMessageData* thisptr, BitStream* bits)
+#define DECL_NET_PARSE_FUNC(type) static bool PARSE_FUNC_NAME(type)(NetSvcMessageData* thisptr, BitStream* bits)
 #define DECL_NET_PRINT_FUNC(type) static void  PRINT_FUNC_NAME(type)(const NetSvcMessageData* thisptr, FILE* fp)
 #define DECL_NET_FREE_FUNC(type) static void  FREE_FUNC_NAME(type)(NetSvcMessageData* thisptr)
 
@@ -13,7 +13,9 @@ static uint32_t highest_bit_index(uint32_t x) {
 }
 
 // NetNop
-DECL_NET_PARSE_FUNC(NetNop) {}
+DECL_NET_PARSE_FUNC(NetNop) {
+    return true;
+}
 DECL_NET_PRINT_FUNC(NetNop) {
     fprintf(fp, "\tNetNop\n");
 }
@@ -23,12 +25,12 @@ DECL_NET_FREE_FUNC(NetNop) {}
 DECL_NET_PARSE_FUNC(NetDisconnect) {
     DECL_PTR(NetDisconnect);
     ptr->text = bits_read_str(bits);
+    return true;
 }
 DECL_NET_PRINT_FUNC(NetDisconnect) {
     const DECL_PTR(NetDisconnect);
     fprintf(fp, "\tNetDisconnect\n");
     fprintf(fp, "\t\tText: %s\n", ptr->text);
-
 }
 DECL_NET_FREE_FUNC(NetDisconnect) {
     DECL_PTR(NetDisconnect);
@@ -41,6 +43,7 @@ DECL_NET_PARSE_FUNC(NetFile) {
     ptr->transfer_id = bits_read_le_u32(bits);
     ptr->file_name = bits_read_str(bits);
     ptr->file_flags = bits_read_bits(demo_info.NE ? 2 : 1, bits);
+    return true;
 }
 DECL_NET_PRINT_FUNC(NetFile) {
     const DECL_PTR(NetFile);
@@ -58,6 +61,7 @@ DECL_NET_FREE_FUNC(NetFile) {
 DECL_NET_PARSE_FUNC(NetSplitScreenUser) {
     DECL_PTR(NetSplitScreenUser);
     ptr->unknown = bits_read_one_bit(bits);
+    return true;
 }
 DECL_NET_PRINT_FUNC(NetSplitScreenUser) {
     const DECL_PTR(NetSplitScreenUser);
@@ -74,6 +78,7 @@ DECL_NET_PARSE_FUNC(NetTick) {
         ptr->host_frame_time = bits_read_le_u16(bits);
         ptr->host_frame_time_std_deviation = bits_read_le_u16(bits);
     }
+    return true;
 }
 DECL_NET_PRINT_FUNC(NetTick) {
     const DECL_PTR(NetTick);
@@ -90,6 +95,7 @@ DECL_NET_FREE_FUNC(NetTick) {}
 DECL_NET_PARSE_FUNC(NetStringCmd) {
     DECL_PTR(NetStringCmd);
     ptr->command = bits_read_str(bits);
+    return true;
 }
 DECL_NET_PRINT_FUNC(NetStringCmd) {
     const DECL_PTR(NetStringCmd);
@@ -110,6 +116,7 @@ DECL_NET_PARSE_FUNC(NetSetConVar) {
         ptr->cvars[i].name = bits_read_str(bits);
         ptr->cvars[i].value = bits_read_str(bits);
     }
+    return true;
 }
 DECL_NET_PRINT_FUNC(NetSetConVar) {
     const DECL_PTR(NetSetConVar);
@@ -150,6 +157,7 @@ DECL_NET_PARSE_FUNC(NetSignonState) {
             bits_read_bytes((char*)ptr->map_name, len, bits);
         }
     }
+    return true;
 }
 DECL_NET_PRINT_FUNC(NetSignonState) {
     const DECL_PTR(NetSignonState);
@@ -211,6 +219,7 @@ DECL_NET_PARSE_FUNC(SvcServerInfo) {
     if (demo_info.network_protocol == 24) {
         ptr->has_replay = bits_read_one_bit(bits);
     }
+    return true;
 }
 DECL_NET_PRINT_FUNC(SvcServerInfo) {
     const DECL_PTR(SvcServerInfo);
@@ -258,6 +267,7 @@ DECL_NET_PARSE_FUNC(SvcSendTable) {
     uint32_t len = ptr->length = bits_read_le_u16(bits);
     // props parsing not implemented
     ptr->props = bits_read_bits_arr(len, bits);
+    return true;
 }
 DECL_NET_PRINT_FUNC(SvcSendTable) {
     const DECL_PTR(SvcSendTable);
@@ -277,7 +287,7 @@ DECL_NET_PARSE_FUNC(SvcClassInfo) {
     ptr->create_on_client = bits_read_one_bit(bits);
     uint32_t class_id_bits = highest_bit_index(len) + 1;
     ServerClass* classes = malloc_s(len * sizeof(ServerClass));
-    if (ptr->create_on_client) {
+    if (!ptr->create_on_client) {
         for (uint32_t i = 0; i < len; i++) {
             classes[i].class_id = bits_read_bits(class_id_bits, bits);
             classes[i].class_name = bits_read_str(bits);
@@ -285,6 +295,7 @@ DECL_NET_PARSE_FUNC(SvcClassInfo) {
         }
     }
     ptr->server_classes = classes;
+    return true;
 }
 DECL_NET_PRINT_FUNC(SvcClassInfo) {
     const DECL_PTR(SvcClassInfo);
@@ -292,7 +303,7 @@ DECL_NET_PRINT_FUNC(SvcClassInfo) {
     uint32_t len = ptr->length;
     fprintf(fp, "\t\tCreateOnClient: %s\n", ptr->create_on_client ? "true" : "false");
     const ServerClass* classes = ptr->server_classes;
-    if (ptr->create_on_client) {
+    if (!ptr->create_on_client) {
         fprintf(fp, "\t\tServerClasses\n");
         for (uint32_t i = 0; i < len; i++) {
             fprintf(fp, "\t\t\tClassID: %d\n", classes[i].class_id);
@@ -304,7 +315,7 @@ DECL_NET_PRINT_FUNC(SvcClassInfo) {
 DECL_NET_FREE_FUNC(SvcClassInfo) {
     DECL_PTR(SvcClassInfo);
     uint32_t len = ptr->length;
-    if (ptr->create_on_client) {
+    if (!ptr->create_on_client) {
         ServerClass* classes = ptr->server_classes;
         for (uint32_t i = 0; i < len; i++) {
             free(classes[i].class_name);
@@ -318,6 +329,7 @@ DECL_NET_FREE_FUNC(SvcClassInfo) {
 DECL_NET_PARSE_FUNC(SvcSetPause) {
     DECL_PTR(SvcSetPause);
     ptr->paused = bits_read_one_bit(bits);
+    return true;
 }
 DECL_NET_PRINT_FUNC(SvcSetPause) {
     const DECL_PTR(SvcSetPause);
@@ -349,6 +361,7 @@ DECL_NET_PARSE_FUNC(SvcCreateStringTable) {
         ptr->flags = 0;
     // string_data parsing not implemented
     ptr->string_data = (uint8_t*)bits_read_bits_arr(ptr->length, bits);
+    return true;
 }
 DECL_NET_PRINT_FUNC(SvcCreateStringTable) {
     const DECL_PTR(SvcCreateStringTable);
@@ -372,7 +385,9 @@ DECL_NET_FREE_FUNC(SvcCreateStringTable) {
 }
 
 // SvcUpdateStringTable
-DECL_NET_PARSE_FUNC(SvcUpdateStringTable) {}
+DECL_NET_PARSE_FUNC(SvcUpdateStringTable) {
+    return false;
+}
 DECL_NET_PRINT_FUNC(SvcUpdateStringTable) {}
 DECL_NET_FREE_FUNC(SvcUpdateStringTable) {}
 
@@ -387,6 +402,7 @@ DECL_NET_PARSE_FUNC(SvcVoiceInit) {
         else if (demo_info.demo_protocol == 4)
             ptr->unknown = bits_read_le_u32(bits);
     }
+    return true;
 }
 DECL_NET_PRINT_FUNC(SvcVoiceInit) {
     const DECL_PTR(SvcVoiceInit);
@@ -410,7 +426,9 @@ DECL_NET_FREE_FUNC(SvcVoiceInit) {
 }
 
 // SvcVoiceData
-DECL_NET_PARSE_FUNC(SvcVoiceData) {}
+DECL_NET_PARSE_FUNC(SvcVoiceData) {
+    return true;
+}
 DECL_NET_PRINT_FUNC(SvcVoiceData) {}
 DECL_NET_FREE_FUNC(SvcVoiceData) {}
 
@@ -418,6 +436,7 @@ DECL_NET_FREE_FUNC(SvcVoiceData) {}
 DECL_NET_PARSE_FUNC(SvcPrint) {
     DECL_PTR(SvcPrint);
     ptr->message = bits_read_str(bits);
+    return true;
 }
 DECL_NET_PRINT_FUNC(SvcPrint) {
     const DECL_PTR(SvcPrint);
@@ -430,7 +449,9 @@ DECL_NET_FREE_FUNC(SvcPrint) {
 }
 
 // SvcSounds
-DECL_NET_PARSE_FUNC(SvcSounds) {}
+DECL_NET_PARSE_FUNC(SvcSounds) {
+    return true;
+}
 DECL_NET_PRINT_FUNC(SvcSounds) {}
 DECL_NET_FREE_FUNC(SvcSounds) {}
 
@@ -438,6 +459,7 @@ DECL_NET_FREE_FUNC(SvcSounds) {}
 DECL_NET_PARSE_FUNC(SvcSetView) {
     DECL_PTR(SvcSetView);
     ptr->entity_index = bits_read_bits(11, bits);
+    return true;
 }
 DECL_NET_PRINT_FUNC(SvcSetView) {
     const DECL_PTR(SvcSetView);
@@ -451,6 +473,7 @@ DECL_NET_PARSE_FUNC(SvcFixAngle) {
     DECL_PTR(SvcFixAngle);
     ptr->relative = bits_read_one_bit(bits);
     bits_read_bytes((char*)ptr->angle, 6, bits);
+    return true;
 }
 DECL_NET_PRINT_FUNC(SvcFixAngle) {
     const DECL_PTR(SvcFixAngle);
@@ -464,6 +487,7 @@ DECL_NET_FREE_FUNC(SvcFixAngle) {}
 DECL_NET_PARSE_FUNC(SvcCrosshairAngle) {
     DECL_PTR(SvcCrosshairAngle);
     bits_read_bytes((char*)ptr->angle, 6, bits);
+    return true;
 }
 DECL_NET_PRINT_FUNC(SvcCrosshairAngle) {
     const DECL_PTR(SvcCrosshairAngle);
@@ -473,52 +497,72 @@ DECL_NET_PRINT_FUNC(SvcCrosshairAngle) {
 DECL_NET_FREE_FUNC(SvcCrosshairAngle) {}
 
 // SvcBspDecal
-DECL_NET_PARSE_FUNC(SvcBspDecal) {}
+DECL_NET_PARSE_FUNC(SvcBspDecal) {
+    return false;
+}
 DECL_NET_PRINT_FUNC(SvcBspDecal) {}
 DECL_NET_FREE_FUNC(SvcBspDecal) {}
 
 // SvcSplitScreen
-DECL_NET_PARSE_FUNC(SvcSplitScreen) {}
+DECL_NET_PARSE_FUNC(SvcSplitScreen) {
+    return false;
+}
 DECL_NET_PRINT_FUNC(SvcSplitScreen) {}
 DECL_NET_FREE_FUNC(SvcSplitScreen) {}
 
 // SvcUserMessage
-DECL_NET_PARSE_FUNC(SvcUserMessage) {}
+DECL_NET_PARSE_FUNC(SvcUserMessage) {
+    return false;
+}
 DECL_NET_PRINT_FUNC(SvcUserMessage) {}
 DECL_NET_FREE_FUNC(SvcUserMessage) {}
 
 // SvcEntityMessage
-DECL_NET_PARSE_FUNC(SvcEntityMessage) {}
+DECL_NET_PARSE_FUNC(SvcEntityMessage) {
+    return false;
+}
 DECL_NET_PRINT_FUNC(SvcEntityMessage) {}
 DECL_NET_FREE_FUNC(SvcEntityMessage) {}
 
 // SvcGameEvent
-DECL_NET_PARSE_FUNC(SvcGameEvent) {}
+DECL_NET_PARSE_FUNC(SvcGameEvent) {
+    return false;
+}
 DECL_NET_PRINT_FUNC(SvcGameEvent) {}
 DECL_NET_FREE_FUNC(SvcGameEvent) {}
 
 // SvcPacketEntities
-DECL_NET_PARSE_FUNC(SvcPacketEntities) {}
+DECL_NET_PARSE_FUNC(SvcPacketEntities) {
+    return false;
+}
 DECL_NET_PRINT_FUNC(SvcPacketEntities) {}
 DECL_NET_FREE_FUNC(SvcPacketEntities) {}
 
 // SvcTempEntities
-DECL_NET_PARSE_FUNC(SvcTempEntities) {}
+DECL_NET_PARSE_FUNC(SvcTempEntities) {
+    return false;
+}
 DECL_NET_PRINT_FUNC(SvcTempEntities) {}
 DECL_NET_FREE_FUNC(SvcTempEntities) {}
 
 // SvcPrefetch
-DECL_NET_PARSE_FUNC(SvcPrefetch) {}
+DECL_NET_PARSE_FUNC(SvcPrefetch) {
+    return false;
+}
 DECL_NET_PRINT_FUNC(SvcPrefetch) {}
 DECL_NET_FREE_FUNC(SvcPrefetch) {}
 
 // SvcMenu
-DECL_NET_PARSE_FUNC(SvcMenu) {}
+DECL_NET_PARSE_FUNC(SvcMenu) {
+    return false;
+}
 DECL_NET_PRINT_FUNC(SvcMenu) {}
 DECL_NET_FREE_FUNC(SvcMenu) {}
 
 // SvcGameEventList
-DECL_NET_PARSE_FUNC(SvcGameEventList) {}
+DECL_NET_PARSE_FUNC(SvcGameEventList) {
+    return false;
+}
 DECL_NET_PRINT_FUNC(SvcGameEventList) {}
 DECL_NET_FREE_FUNC(SvcGameEventList) {}
 
@@ -527,6 +571,7 @@ DECL_NET_PARSE_FUNC(SvcGetCvarValue) {
     DECL_PTR(SvcGetCvarValue);
     bits_read_bytes(ptr->cookie, 4, bits);
     ptr->cvar_name = bits_read_str(bits);
+    return true;
 }
 DECL_NET_PRINT_FUNC(SvcGetCvarValue) {
     const DECL_PTR(SvcGetCvarValue);
@@ -540,17 +585,23 @@ DECL_NET_FREE_FUNC(SvcGetCvarValue) {
 }
 
 // SvcCmdKeyValues
-DECL_NET_PARSE_FUNC(SvcCmdKeyValues) {}
+DECL_NET_PARSE_FUNC(SvcCmdKeyValues) {
+    return false;
+}
 DECL_NET_PRINT_FUNC(SvcCmdKeyValues) {}
 DECL_NET_FREE_FUNC(SvcCmdKeyValues) {}
 
 // SvcPaintmapData
-DECL_NET_PARSE_FUNC(SvcPaintmapData) {}
+DECL_NET_PARSE_FUNC(SvcPaintmapData) {
+    return false;
+}
 DECL_NET_PRINT_FUNC(SvcPaintmapData) {}
 DECL_NET_FREE_FUNC(SvcPaintmapData) {}
 
 // Invalid
-DECL_NET_PARSE_FUNC(NetInvalid) {}
+DECL_NET_PARSE_FUNC(NetInvalid) {
+    return false;
+}
 DECL_NET_PRINT_FUNC(NetInvalid) {}
 DECL_NET_FREE_FUNC(NetInvalid) {}
 

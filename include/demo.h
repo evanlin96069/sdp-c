@@ -17,11 +17,13 @@ typedef struct {
     uint32_t sign_on_length;
 } DemoHeader;
 
+typedef VECTOR(DemoMessage) Vector_DemoMessage;
+
 typedef struct {
     char* path;
     char* file_name;
     DemoHeader header;
-    VECTOR(DemoMessage) messages;
+    Vector_DemoMessage messages;
 } Demo;
 
 Demo* new_demo(char* path);

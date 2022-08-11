@@ -123,7 +123,7 @@ typedef enum {
 typedef struct _NetSvcMessage NetSvcMessage;
 typedef union _NetSvcMessageData NetSvcMessageData;
 
-typedef void (*ParseNetSvcMsgFunc)(NetSvcMessageData* thisptr, BitStream* bits);
+typedef bool (*ParseNetSvcMsgFunc)(NetSvcMessageData* thisptr, BitStream* bits);
 typedef void (*PrintNetSvcMsgFunc)(const NetSvcMessageData* thisptr, FILE* fp);
 typedef void (*FreeNetSvcMsgFunc)(NetSvcMessageData* thisptr);
 

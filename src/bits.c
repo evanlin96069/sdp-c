@@ -3,6 +3,7 @@
 #include "bits.h"
 #include "alloc.h"
 #include "vector.h"
+#include "print.h"
 
 BitStream* bits_init(uint8_t* data, size_t byte_size) {
     BitStream* bits = malloc_s(sizeof(BitStream));
@@ -44,16 +45,16 @@ BitStream* bits_load_file(char* path) {
 void bits_skip(size_t bit_num, BitStream* bits) {
     bits->current += bit_num;
     if (bits->current > bits->bit_size) {
-        fprintf(stderr, "[ERROR] BitStream overflow when skipping.\n");
-        exit(EXIT_FAILURE);
+        error("BitStream overflow when skipping.\n");
+        abort();
     }
     bits_fetch(bits);
 }
 
 void bits_setpos(size_t bit_pos, BitStream* bits) {
     if (bit_pos > bits->bit_size) {
-        fprintf(stderr, "[ERROR] BitStream overflow when setpos.\n");
-        exit(EXIT_FAILURE);
+        error("BitStream overflow when setpos.\n");
+        abort();
     }
     bits->current = bit_pos;
     bits_fetch(bits);
@@ -91,8 +92,8 @@ float bits_read_le_f32(BitStream* bits) {
 
 uint32_t bits_read_bits(size_t bit_size, BitStream* bits) {
     if (bits->current + bit_size > bits->bit_size) {
-        fprintf(stderr, "[ERROR] BitsStream overflow when reading.\n");
-        exit(EXIT_FAILURE);
+        error("BitsStream overflow when reading.\n");
+        abort();
     }
     uint32_t n = 0;
     size_t remain = 64 - bits->offset;
@@ -128,6 +129,7 @@ uint8_t* bits_read_bits_arr(size_t bit_size, BitStream* bits) {
     uint8_t n;
     while (bit_size > 8) {
         n = bits_read_le_u8(bits);
+        bit_size -= 8;
         vector_push(arr, n);
     }
     if (bit_size) {

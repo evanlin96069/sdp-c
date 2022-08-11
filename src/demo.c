@@ -5,6 +5,7 @@
 #include "demo_info.h"
 #include "bits.h"
 #include "alloc.h"
+#include "print.h"
 
 DemoInfo demo_info;
 
@@ -53,7 +54,7 @@ static void print_header(const Demo* demo, FILE* fp) {
 int demo_parse(Demo* demo, bool quick_mode) {
     BitStream* bits = bits_load_file(demo->path);
     if (!bits) {
-        fprintf(stderr, "[ERROR] Cannot open file %s.\n", demo->path);
+        error("Cannot open file %s.\n", demo->path);
         return -1;
     }
 
@@ -151,15 +152,17 @@ int demo_parse(Demo* demo, bool quick_mode) {
 
         // parse message
         if (type < MESSAGE_COUNT && demo_info.msg_ids[type] != Invalid_MSG) {
+            debug("Parsing message type %d.\n", type);
             demo_info.msg_table[type].parse(&msg.data, bits);
             vector_push(demo->messages, msg);
         }
         else {
-            fprintf(stderr, "[ERROR] Unexpected type %d at message %d while parsing demo message.\n", type, (uint32_t)demo->messages.size + 1);
+            error("Unexpected type %d at message %d while parsing demo message.\n", type, (uint32_t)demo->messages.size + 1);
             break;
         }
     } while (type != demo_info.msg_ids[Stop_MSG]);
     vector_shrink(demo->messages);
+    bits_free(bits);
     return measured_ticks;
 }
 
@@ -209,8 +212,9 @@ void demo_gen_tas_script(const Demo* demo, FILE* fp) {
 void demo_free(Demo* demo) {
     if (!demo) return;
     for (size_t i = 0; i < demo->messages.size; i++) {
-        DemoMessageData* data = &demo->messages.data[i].data;
-        demo_info.msg_table[i].free(data);
+        DemoMessage* msg = &demo->messages.data[i];
+        demo_info.msg_table[msg->type].free(&msg->data);
     }
+    free(demo->messages.data);
     free(demo);
 }
