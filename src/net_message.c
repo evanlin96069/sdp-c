@@ -655,11 +655,17 @@ DECL_NET_PARSE_FUNC(SvcGameEvent) {
     DECL_PTR(SvcGameEvent);
     ptr->length = bits_read_bits(11, bits);
     // GameEvent[] parsing not implemented
-
-    return false;
+    ptr->data = bits_read_bits_arr(ptr->length, bits);
+    return true;
 }
-DECL_NET_PRINT_FUNC(SvcGameEvent) {}
-DECL_NET_FREE_FUNC(SvcGameEvent) {}
+DECL_NET_PRINT_FUNC(SvcGameEvent) {
+    const DECL_PTR(SvcGameEvent);;
+    fprintf(fp, "\t\t\tLength: %d\n", ptr->length);
+}
+DECL_NET_FREE_FUNC(SvcGameEvent) {
+    DECL_PTR(SvcGameEvent);
+    free(ptr->data);
+}
 
 // SvcPacketEntities
 DECL_NET_PARSE_FUNC(SvcPacketEntities) {
@@ -753,10 +759,22 @@ DECL_NET_FREE_FUNC(SvcMenu) {
 
 // SvcGameEventList
 DECL_NET_PARSE_FUNC(SvcGameEventList) {
-    return false;
+    DECL_PTR(SvcGameEventList);
+    ptr->events = bits_read_bits(9, bits);
+    ptr->length = bits_read_bits(20, bits);
+    // GameEventDescriptor parsing not implemented
+    ptr->data = bits_read_bits_arr(ptr->length, bits);
+    return true;
 }
-DECL_NET_PRINT_FUNC(SvcGameEventList) {}
-DECL_NET_FREE_FUNC(SvcGameEventList) {}
+DECL_NET_PRINT_FUNC(SvcGameEventList) {
+    const DECL_PTR(SvcGameEventList);
+    fprintf(fp, "\t\t\tEvent: %d\n", ptr->events);
+    fprintf(fp, "\t\t\tLength: %d\n", ptr->length);
+}
+DECL_NET_FREE_FUNC(SvcGameEventList) {
+    DECL_PTR(SvcGameEventList);
+    free(ptr->data);
+}
 
 // SvcGetCvarValue
 DECL_NET_PARSE_FUNC(SvcGetCvarValue) {

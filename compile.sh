@@ -20,6 +20,7 @@ rm -f obj/*.o
 #compile obj files
 src="\
 	alloc.c
+	vector.c
 	bits.c
 	demo.c
 	demo_message.c

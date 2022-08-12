@@ -341,7 +341,7 @@ typedef struct {
 
 typedef struct {
     uint32_t length;
-    GameEvent* data;
+    uint8_t* data;
 } SvcGameEvent;
 
 typedef struct {
@@ -380,7 +380,7 @@ typedef struct {
 typedef struct {
     uint32_t events;
     uint32_t length;
-    GameEventDescriptor* data;
+    uint8_t* data;
 } SvcGameEventList;
 
 typedef struct {
