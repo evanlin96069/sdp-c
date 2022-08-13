@@ -299,11 +299,11 @@ typedef struct {
 
 typedef struct {
     bool relative;
-    uint16_t angle[3];
+    float angle[3];
 } SvcFixAngle;
 
 typedef struct {
-    uint16_t angle[3];
+    float angle[3];
 } SvcCrosshairAngle;
 
 typedef struct {

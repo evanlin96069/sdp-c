@@ -45,6 +45,7 @@ uint32_t bits_read_bits(size_t bit_size, BitStream* bits);
 
 uint32_t bits_read_varuint32(BitStream* bits);
 VectorCoord bits_read_vcoord(BitStream* bits);
+float bits_read_bit_angle(size_t bit_size, BitStream* bits);
 
 uint8_t* bits_read_bits_arr(size_t bit_size, BitStream* bits);
 size_t bits_read_bytes(char* buf, size_t len, BitStream* bits);

@@ -26,8 +26,35 @@ typedef struct {
     Vector_DemoMessage messages;
 } Demo;
 
+enum Game {
+    DMOMM,
+    HL2_OE,
+    PORTAL_3258,
+    PORTAL_3420,
+    PORTAL_5135,
+    PORTAL_1910503,
+    PORTAL_2,
+    GAME_UNKNOWN,
+    GAME_COUNT
+};
+
+typedef enum {
+    MEASURED_SUCCESS,
+    MEASURED_ERROR,
+    NOT_MEASURED
+} DemoTimeState;
+
+typedef struct {
+    DemoTimeState state;
+    enum Game game;
+    int ticks;
+    float tick_interval;
+} DemoTime;
+
+extern const char* game_names[GAME_COUNT];
+
 Demo* new_demo(char* path);
-int demo_parse(Demo* demo, bool quick_mode);
+DemoTime demo_parse(Demo* demo, uint8_t parse_level, bool debug_mode);
 void demo_print_header(const Demo* demo, FILE* fp);
 void demo_verbose(const Demo* demo, FILE* fp);
 void demo_gen_tas_script(const Demo* demo, FILE* fp);

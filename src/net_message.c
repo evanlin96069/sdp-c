@@ -39,7 +39,7 @@ DECL_NET_PARSE_FUNC(NetFile) {
     DECL_PTR(NetFile);
     ptr->transfer_id = bits_read_le_u32(bits);
     ptr->file_name = bits_read_str(bits);
-    ptr->file_flags = bits_read_bits(demo_info.NE ? 2 : 1, bits);
+    ptr->file_flags = bits_read_bits((demo_info.demo_protocol >= 4) ? 2 : 1, bits);
     return true;
 }
 DECL_NET_PRINT_FUNC(NetFile) {
@@ -135,7 +135,7 @@ DECL_NET_PARSE_FUNC(NetSignonState) {
     DECL_PTR(NetSignonState);
     ptr->signon_state = bits_read_le_u8(bits);
     ptr->spawn_count = bits_read_le_u32(bits);
-    if (demo_info.NE) {
+    if (demo_info.demo_protocol >= 4) {
         uint8_t len;
         ptr->num_server_players = bits_read_le_u32(bits);
         len = ptr->ids_length = bits_read_le_u32(bits);
@@ -155,7 +155,7 @@ DECL_NET_PRINT_FUNC(NetSignonState) {
     const DECL_PTR(NetSignonState);
     fprintf(fp, "\t\t\tSignonState: %d\n", ptr->signon_state);
     fprintf(fp, "\t\t\tSpawnCount: %d\n", ptr->spawn_count);
-    if (demo_info.NE) {
+    if (demo_info.demo_protocol >= 4) {
         fprintf(fp, "\t\t\tNumServerPlayers: %d\n", ptr->num_server_players);
         uint32_t len = ptr->ids_length;
         fprintf(fp, "\t\t\tPlayersNetworkIds:\n\t\t\t[");
@@ -171,7 +171,7 @@ DECL_NET_PRINT_FUNC(NetSignonState) {
 }
 DECL_NET_FREE_FUNC(NetSignonState) {
     DECL_PTR(NetSignonState);
-    if (demo_info.NE) {
+    if (demo_info.demo_protocol >= 4) {
         if (ptr->ids_length > 0) {
             free(ptr->players_network_ids);
         }
@@ -189,7 +189,7 @@ DECL_NET_PARSE_FUNC(SvcServerInfo) {
     ptr->is_hltv = bits_read_one_bit(bits);
     ptr->is_dedicated = bits_read_one_bit(bits);
     ptr->client_crc = bits_read_le_u32(bits);
-    if (demo_info.NE) {
+    if (demo_info.demo_protocol >= 4) {
         ptr->string_table_crc = bits_read_le_u32(bits);
     }
     ptr->max_class = bits_read_le_u16(bits);
@@ -212,6 +212,12 @@ DECL_NET_PARSE_FUNC(SvcServerInfo) {
     if (demo_info.network_protocol == 24) {
         ptr->has_replay = bits_read_one_bit(bits);
     }
+
+    if (!demo_info.has_tick_interval) {
+        demo_info.tick_interval = ptr->tick_interval;
+        demo_info.has_tick_interval = true;
+    }
+
     return true;
 }
 DECL_NET_PRINT_FUNC(SvcServerInfo) {
@@ -221,7 +227,7 @@ DECL_NET_PRINT_FUNC(SvcServerInfo) {
     fprintf(fp, "\t\t\tIsHltv: %s\n", ptr->is_hltv ? "true" : "false");
     fprintf(fp, "\t\t\tIsDedicated: %s\n", ptr->is_dedicated ? "true" : "false");
     fprintf(fp, "\t\t\tClientCrc: %d\n", ptr->client_crc);
-    if (demo_info.NE) {
+    if (demo_info.demo_protocol >= 4) {
         fprintf(fp, "\t\t\tStringTableCrc: %d\n", ptr->string_table_crc);
     }
     fprintf(fp, "\t\t\tMaxClass: %d\n", ptr->max_class);
@@ -349,7 +355,7 @@ DECL_NET_PARSE_FUNC(SvcCreateStringTable) {
     ptr->user_data_size_bits = ptr->user_data_fixed_size ? bits_read_bits(4, bits) : 0;
 
     if (demo_info.network_protocol >= 15) {
-        ptr->flags = bits_read_bits(demo_info.NE ? 2 : 1, bits);
+        ptr->flags = bits_read_bits((demo_info.demo_protocol >= 4) ? 2 : 1, bits);
     }
     else {
         ptr->flags = 0;
@@ -529,25 +535,29 @@ DECL_NET_FREE_FUNC(SvcSetView) {}
 DECL_NET_PARSE_FUNC(SvcFixAngle) {
     DECL_PTR(SvcFixAngle);
     ptr->relative = bits_read_one_bit(bits);
-    bits_read_bytes((char*)ptr->angle, 6, bits);
+    ptr->angle[0] = bits_read_bit_angle(16, bits);
+    ptr->angle[1] = bits_read_bit_angle(16, bits);
+    ptr->angle[2] = bits_read_bit_angle(16, bits);
     return true;
 }
 DECL_NET_PRINT_FUNC(SvcFixAngle) {
     const DECL_PTR(SvcFixAngle);
     fprintf(fp, "\t\t\tRelative: %s\n", ptr->relative ? "true" : "false");
-    fprintf(fp, "\t\t\tAngles: (%d, %d, %d)\n", ptr->angle[0], ptr->angle[1], ptr->angle[2]);
+    fprintf(fp, "\t\t\tAngles: (%.3f, %.3f, %.3f)\n", ptr->angle[0], ptr->angle[1], ptr->angle[2]);
 }
 DECL_NET_FREE_FUNC(SvcFixAngle) {}
 
 // SvcCrosshairAngle
 DECL_NET_PARSE_FUNC(SvcCrosshairAngle) {
     DECL_PTR(SvcCrosshairAngle);
-    bits_read_bytes((char*)ptr->angle, 6, bits);
+    ptr->angle[0] = bits_read_bit_angle(16, bits);
+    ptr->angle[1] = bits_read_bit_angle(16, bits);
+    ptr->angle[2] = bits_read_bit_angle(16, bits);
     return true;
 }
 DECL_NET_PRINT_FUNC(SvcCrosshairAngle) {
     const DECL_PTR(SvcCrosshairAngle);
-    fprintf(fp, "\t\t\tAngles: (%d, %d, %d)\n", ptr->angle[0], ptr->angle[1], ptr->angle[2]);
+    fprintf(fp, "\t\t\tAngles: (%.3f, %.3f, %.3f)\n", ptr->angle[0], ptr->angle[1], ptr->angle[2]);
 }
 DECL_NET_FREE_FUNC(SvcCrosshairAngle) {}
 
@@ -614,7 +624,7 @@ DECL_NET_FREE_FUNC(SvcSplitScreen) {
 DECL_NET_PARSE_FUNC(SvcUserMessage) {
     DECL_PTR(SvcUserMessage);
     ptr->msg_type = bits_read_le_u8(bits);
-    ptr->length = bits_read_bits(demo_info.NE ? 12 : 11, bits);
+    ptr->length = bits_read_bits((demo_info.demo_protocol >= 4) ? 12 : 11, bits);
     // data parsing not implemented
     ptr->data = bits_read_bits_arr(ptr->length, bits);
     return true;

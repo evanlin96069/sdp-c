@@ -152,6 +152,19 @@ VectorCoord bits_read_vcoord(BitStream* bits) {
     return result;
 }
 
+float bits_read_bit_angle(size_t bit_size, BitStream* bits) {
+    float result;
+    int i;
+    float shift;
+
+    shift = (float)(1 << bit_size);
+
+    i = bits_read_bits(bit_size, bits);
+    result = (float)i * (360.0 / shift);
+
+    return result;
+}
+
 uint8_t* bits_read_bits_arr(size_t bit_size, BitStream* bits) {
     if (bit_size <= 0)
         return NULL;

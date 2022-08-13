@@ -7,7 +7,18 @@
 #include "alloc.h"
 #include "print.h"
 
-DemoInfo demo_info;
+const char* game_names[GAME_COUNT] = {
+    "Dark Messiah of Might & Magic",
+    "Half-Life 2 Old Engine",
+    "Portal (3258)",
+    "Portal (3420)",
+    "Source Unpack (5135)",
+    "Steampipe HL2/Portal",
+    "Portal 2",
+    "Unknown"
+};
+
+DemoInfo demo_info = { 0 };
 
 Demo* new_demo(char* path) {
     Demo* demo = malloc_s(sizeof(Demo));
@@ -51,74 +62,98 @@ static void print_header(const Demo* demo, FILE* fp) {
     fprintf(fp, "SignOnLength: %d\n", header->sign_on_length);
 }
 
-int demo_parse(Demo* demo, bool quick_mode) {
+DemoTime demo_parse(Demo* demo, uint8_t parse_level, bool debug_mode) {
+    demo_info.parse_level = parse_level;
+    demo_info.debug_mode = debug_mode;
+
     BitStream* bits = bits_load_file(demo->path);
+    DemoTime demo_time = { 0 };
     if (!bits) {
         error("Cannot open file %s.\n", demo->path);
-        return -1;
+        demo_time.state = MEASURED_ERROR;
+        return demo_time;
     }
 
     int measured_ticks = 0;
-    demo_info.quick_mode = quick_mode;
 
     parse_header(demo, bits);
+    if (parse_level == 0) {
+        // only parse header
+        demo_time.state = NOT_MEASURED;
+        return demo_time;
+    }
 
     demo_info.demo_protocol = demo->header.demo_protocol;
     demo_info.network_protocol = demo->header.network_protocol;
 
+    demo_info.msg_settings = NULL;
+    demo_info.net_msg_settings = NULL;
+
     // TODO: needs improvement
+    demo_info.game = GAME_UNKNOWN;
+    demo_info.has_tick_interval = false;
+    demo_time.tick_interval = 0.0f;
+    demo_info.MSSC = 1;
     switch (demo_info.demo_protocol) {
     case 2:
-        demo_info.NE = false;
-        demo_info.tickrate = 66.6666f;
-        demo_info.game = (demo_info.network_protocol == 7) ? DMOMM : UNKNOWN;
+        if (demo_info.network_protocol == 7) {
+            demo_info.game = DMOMM;
+            demo_time.tick_interval = 0.015f;
+        }
         demo_info.msg_settings = &portal_3420_msg_settings;
         demo_info.net_msg_settings = &oe_net_msg_settings;
         break;
     case 3:
-        demo_info.NE = false;
-        demo_info.tickrate = 66.6666f;
         demo_info.net_msg_settings = &oe_net_msg_settings;
         switch (demo_info.network_protocol)
         {
         case 7:
             demo_info.game = HL2_OE;
+            demo_time.tick_interval = 0.015f;
             demo_info.msg_settings = &portal_3420_msg_settings;
             break;
         case 11:
             demo_info.game = PORTAL_3258;
+            demo_time.tick_interval = 0.015f;
             demo_info.msg_settings = &portal_3420_msg_settings;
             break;
         case 14:
             demo_info.game = PORTAL_3420;
+            demo_time.tick_interval = 0.015f;
             demo_info.msg_settings = &portal_3420_msg_settings;
             break;
         case 15:
             demo_info.game = PORTAL_5135;
+            demo_time.tick_interval = 0.015f;
             demo_info.msg_settings = &portal_5135_msg_settings;
             break;
         case 24:
             demo_info.game = PORTAL_1910503;
+            demo_time.tick_interval = 0.015f;
             demo_info.msg_settings = &portal_5135_msg_settings;
             break;
         default:
-            demo_info.game = UNKNOWN;
             demo_info.msg_settings = &portal_5135_msg_settings;
             break;
         }
         break;
     case 4:
-        demo_info.NE = true;
-        demo_info.tickrate = 60.0f;
-        demo_info.game = (demo_info.network_protocol == 2001) ? PORTAL_2 : UNKNOWN;
+        if (demo_info.network_protocol == 2001) {
+            demo_info.game = PORTAL_2;
+            // 0x3C888889
+            demo_time.tick_interval = 0.016666667f;
+            demo_info.MSSC = 2;
+        }
         demo_info.msg_settings = &ne_msg_settings;
         demo_info.net_msg_settings = &ne_net_msg_settings;
         break;
     default:
-        demo_info.game = UNKNOWN;
+        error("Unsupported demo protocol: %d\n", demo_info.demo_protocol);
+        bits_free(bits);
+        demo_time.state = MEASURED_ERROR;
+        return demo_time;
     }
-
-    demo_info.MSSC = (demo_info.game == PORTAL_2) ? 2 : 1;
+    demo_time.game = demo_info.game;
 
     DemoMessageType type;
     uint32_t count = 0;
@@ -137,8 +172,8 @@ int demo_parse(Demo* demo, bool quick_mode) {
         }
         msg.tick = tick;
 
-        if (tick >= 0 && tick > measured_ticks) {
-            measured_ticks = tick;
+        if (demo_info.MSSC > 1) {
+            msg.slot = bits_read_le_u8(bits);
         }
 
         // parse message
@@ -148,18 +183,31 @@ int demo_parse(Demo* demo, bool quick_mode) {
             bool success = demo_info.msg_settings->func_table[type].parse(&msg.data, bits);
             if (!success) {
                 warning("Failed to parse message %s (%d) at %d.\n", name, type, count);
+                demo_time.state = MEASURED_ERROR;
                 break;
             }
             vector_push(demo->messages, msg);
         }
         else {
             error("Unexpected message type %d at %d.\n", type, count);
+            demo_time.state = MEASURED_ERROR;
             break;
+        }
+
+        if (demo_info.msg_settings->enum_ids[type] == Packet_MSG && tick >= 0 && tick > measured_ticks) {
+            measured_ticks = tick;
         }
     } while (type != demo_info.msg_settings->enum_ids[Stop_MSG]);
     vector_shrink(demo->messages);
     bits_free(bits);
-    return measured_ticks;
+
+    demo_time.ticks = measured_ticks;
+    demo_time.state = MEASURED_SUCCESS;
+    if (demo_info.has_tick_interval) {
+        debug("Found tick interval: %f\n", demo_info.tick_interval);
+        demo_time.tick_interval = demo_info.tick_interval;
+    }
+    return demo_time;
 }
 
 void demo_verbose(const Demo* demo, FILE* fp) {
@@ -175,6 +223,9 @@ void demo_verbose(const Demo* demo, FILE* fp) {
         DemoMessageType type = msg->type;
         const char* name = demo_info.msg_settings->names[type];
         fprintf(fp, "[%d] %s (%d)\n", msg->tick, name, type);
+        if (demo_info.MSSC > 1) {
+            fprintf(fp, "\tSlot: %d\n", msg->slot);
+        }
         demo_info.msg_settings->func_table[type].print(&msg->data, fp);
         fprintf(fp, "\n");
     }

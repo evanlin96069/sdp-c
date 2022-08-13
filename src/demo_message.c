@@ -33,20 +33,15 @@ static void parse_cmd_info(CmdInfo* info, BitStream* bits) {
 
 DECL_PARSE_FUNC(Packet) {
     DECL_PTR(Packet);
-    if (!demo_info.quick_mode) {
-        for (int i = 0; i < demo_info.MSSC; i++) {
-            parse_cmd_info(&ptr->packet_info[i], bits);
-        }
-        ptr->in_sequence = bits_read_le_u32(bits);
-        ptr->out_sequence = bits_read_le_u32(bits);
+    for (int i = 0; i < demo_info.MSSC; i++) {
+        parse_cmd_info(&ptr->packet_info[i], bits);
     }
-    else {
-        // PacketInfo(76) * MSSC + InSequence(4) + OutSequence(4)
-        bits_skip((76 * demo_info.MSSC + 8) << 3, bits);
-    }
+    ptr->in_sequence = bits_read_le_u32(bits);
+    ptr->out_sequence = bits_read_le_u32(bits);
+
     size_t byte_size = ptr->size = bits_read_le_u32(bits);
     size_t end_index = bits->current + (byte_size << 3);
-    if (!demo_info.quick_mode) {
+    if (demo_info.parse_level >= 2) {
         bool success = true;
         uint32_t count = 0;
         while (end_index - bits->current > 6) {
@@ -97,6 +92,9 @@ DECL_PRINT_FUNC(Packet) {
     }
     fprintf(fp, "\tInSequence: %d\n", ptr->in_sequence);
     fprintf(fp, "\tOutSequence: %d\n", ptr->out_sequence);
+
+    if (demo_info.parse_level < 2) return;
+
     fprintf(fp, "\tNET/SVC-Messages:\n");
     for (size_t i = 0; i < ptr->data.size; i++) {
         NetSvcMessage* msg = &ptr->data.data[i];
@@ -108,7 +106,7 @@ DECL_PRINT_FUNC(Packet) {
 }
 DECL_FREE_FUNC(Packet) {
     DECL_PTR(Packet);
-    if (!demo_info.quick_mode) {
+    if (demo_info.parse_level >= 2) {
         for (size_t i = 0; i < ptr->data.size; i++) {
             NetSvcMessage* msg = &ptr->data.data[i];
             demo_info.net_msg_settings->func_table[msg->type].free(&msg->data);
@@ -137,14 +135,9 @@ DECL_FREE_FUNC(SyncTick) {}
 // ConsoleCmd
 DECL_PARSE_FUNC(ConsoleCmd) {
     DECL_PTR(ConsoleCmd);
-    size_t byte_size = bits_read_le_u32(bits);
-    size_t end_index = bits->current + (byte_size << 3);
-    if (!demo_info.quick_mode) {
-        ptr->size = byte_size;
-        ptr->data = (char*)malloc_s(byte_size);
-        bits_read_bytes(ptr->data, byte_size, bits);
-    }
-    bits_setpos(end_index, bits);
+    ptr->size = bits_read_le_u32(bits);
+    ptr->data = (char*)malloc_s(ptr->size);
+    bits_read_bytes(ptr->data, ptr->size, bits);
     return true;
 }
 DECL_PRINT_FUNC(ConsoleCmd) {
@@ -153,9 +146,7 @@ DECL_PRINT_FUNC(ConsoleCmd) {
 }
 DECL_FREE_FUNC(ConsoleCmd) {
     DECL_PTR(ConsoleCmd);
-    if (!demo_info.quick_mode) {
-        free(ptr->data);
-    }
+    free(ptr->data);
 }
 
 // UserCmd
@@ -163,23 +154,41 @@ DECL_FREE_FUNC(ConsoleCmd) {
 static void parse_usercmd(UserCmdInfo* cmd, BitStream* bits) {
     if ((cmd->has_command_number = bits_read_one_bit(bits)))
         cmd->command_number = bits_read_le_u32(bits);
+    if (demo_info.demo_protocol < 3) {
+        cmd->has_tick_count = demo_info.game == DMOMM && bits_read_one_bit(bits);
+        if (cmd->has_tick_count)
+            cmd->tick_count = bits_read_le_u32(bits);
+        if ((cmd->has_view_angles_x = bits_read_one_bit(bits)))
+            cmd->view_angles_x = bits_read_bit_angle(16, bits);
+        if ((cmd->has_view_angles_y = bits_read_one_bit(bits)))
+            cmd->view_angles_y = bits_read_bit_angle(16, bits);
+        if ((cmd->has_view_angles_z = bits_read_one_bit(bits)))
+            cmd->view_angles_z = bits_read_bit_angle(8, bits);
 
-    if ((cmd->has_tick_count = bits_read_one_bit(bits)))
-        cmd->tick_count = bits_read_le_u32(bits);
+        if ((cmd->has_forward_move = bits_read_one_bit(bits)))
+            cmd->forward_move = (int16_t)bits_read_le_u16(bits);
+        if ((cmd->has_side_move = bits_read_one_bit(bits)))
+            cmd->side_move = (int16_t)bits_read_le_u16(bits);
+        if ((cmd->has_up_move = bits_read_one_bit(bits)))
+            cmd->up_move = (int16_t)bits_read_le_u16(bits);
+    }
+    else {
+        if ((cmd->has_tick_count = bits_read_one_bit(bits)))
+            cmd->tick_count = bits_read_le_u32(bits);
+        if ((cmd->has_view_angles_x = bits_read_one_bit(bits)))
+            cmd->view_angles_x = bits_read_le_f32(bits);
+        if ((cmd->has_view_angles_y = bits_read_one_bit(bits)))
+            cmd->view_angles_y = bits_read_le_f32(bits);
+        if ((cmd->has_view_angles_z = bits_read_one_bit(bits)))
+            cmd->view_angles_z = bits_read_le_f32(bits);
 
-    if ((cmd->has_view_angles_x = bits_read_one_bit(bits)))
-        cmd->view_angles_x = bits_read_le_f32(bits);
-    if ((cmd->has_view_angles_y = bits_read_one_bit(bits)))
-        cmd->view_angles_y = bits_read_le_f32(bits);
-    if ((cmd->has_view_angles_z = bits_read_one_bit(bits)))
-        cmd->view_angles_z = bits_read_le_f32(bits);
-
-    if ((cmd->has_forward_move = bits_read_one_bit(bits)))
-        cmd->forward_move = bits_read_le_f32(bits);
-    if ((cmd->has_side_move = bits_read_one_bit(bits)))
-        cmd->side_move = bits_read_le_f32(bits);
-    if ((cmd->has_up_move = bits_read_one_bit(bits)))
-        cmd->up_move = bits_read_le_f32(bits);
+        if ((cmd->has_forward_move = bits_read_one_bit(bits)))
+            cmd->forward_move = bits_read_le_f32(bits);
+        if ((cmd->has_side_move = bits_read_one_bit(bits)))
+            cmd->side_move = bits_read_le_f32(bits);
+        if ((cmd->has_up_move = bits_read_one_bit(bits)))
+            cmd->up_move = bits_read_le_f32(bits);
+    }
 
     if ((cmd->has_buttons = bits_read_one_bit(bits)))
         cmd->buttons = bits_read_le_u32(bits);
@@ -193,6 +202,12 @@ static void parse_usercmd(UserCmdInfo* cmd, BitStream* bits) {
             cmd->weapon_subtype = bits_read_bits(6, bits);
     }
 
+    if (demo_info.game == DMOMM) {
+        // there are much more usercmd data in DMoMM demos,
+        // but I don't know what they mean...
+        return;
+    }
+
     if ((cmd->has_mouse_dx = bits_read_one_bit(bits)))
         cmd->mouse_dx = bits_read_le_u16(bits);
     if ((cmd->has_mouse_dy = bits_read_one_bit(bits)))
@@ -204,14 +219,14 @@ DECL_PARSE_FUNC(UserCmd) {
     uint32_t cmd = bits_read_le_u32(bits);
     size_t byte_size = bits_read_le_u32(bits);
     size_t end_index = bits->current + (byte_size << 3);
-    if (!demo_info.quick_mode) {
-        ptr->cmd = cmd;
-        ptr->size = byte_size;
-        parse_usercmd(&ptr->data, bits);
-        if (bits->current > end_index) {
-            warning("Usercmd not parsed correctly.\n");
-        }
+
+    ptr->cmd = cmd;
+    ptr->size = byte_size;
+    parse_usercmd(&ptr->data, bits);
+    if (bits->current > end_index) {
+        warning("Usercmd not parsed correctly.\n");
     }
+
     bits_setpos(end_index, bits);
     return true;
 }
@@ -239,11 +254,15 @@ DECL_PRINT_FUNC(UserCmd) {
         fprintf(fp, "\tButtons: %d\n", cmd->buttons);
     if (cmd->has_impulse)
         fprintf(fp, "\tImpulse: %d\n", cmd->impulse);
+
     if (cmd->has_weapon_select) {
         fprintf(fp, "\tWeaponSelect: %d\n", cmd->weapon_select);
         if (cmd->has_weapon_subtype)
             fprintf(fp, "\tWeaponSubtype: %d\n", cmd->weapon_subtype);
     }
+
+    if (demo_info.game == DMOMM) return;
+
     if (cmd->has_mouse_dx)
         fprintf(fp, "\tMouseDx: %d\n", cmd->mouse_dx);
     if (cmd->has_mouse_dy)
@@ -256,7 +275,7 @@ DECL_PARSE_FUNC(DataTables) {
     DECL_PTR(DataTables);
     uint32_t byte_size = bits_read_le_u32(bits);
     size_t end_index = bits->current + (byte_size << 3);
-    if (!demo_info.quick_mode) {
+    if (demo_info.parse_level >= 2) {
         // not implement
         ptr->size = byte_size;
         bits_skip(byte_size << 3, bits);
@@ -264,7 +283,9 @@ DECL_PARSE_FUNC(DataTables) {
     bits_setpos(end_index, bits);
     return true;
 }
-DECL_PRINT_FUNC(DataTables) {}
+DECL_PRINT_FUNC(DataTables) {
+    if (demo_info.parse_level < 2) return;
+}
 DECL_FREE_FUNC(DataTables) {}
 
 // Stop
@@ -298,7 +319,7 @@ DECL_PARSE_FUNC(StringTables) {
     DECL_PTR(StringTables);
     uint32_t byte_size = bits_read_le_u32(bits);
     size_t end_index = bits->current + (byte_size << 3);
-    if (!demo_info.quick_mode) {
+    if (demo_info.parse_level >= 2) {
         // not implement
         ptr->size = byte_size;
         bits_skip(byte_size << 3, bits);
@@ -306,7 +327,9 @@ DECL_PARSE_FUNC(StringTables) {
     bits_setpos(end_index, bits);
     return true;
 }
-DECL_PRINT_FUNC(StringTables) {}
+DECL_PRINT_FUNC(StringTables) {
+    if (demo_info.parse_level < 2) return;
+}
 DECL_FREE_FUNC(StringTables) {}
 
 // Invalid

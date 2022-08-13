@@ -6,7 +6,7 @@
 #ifdef _DEBUG
 #define debug(...) fprintf(stderr, "[DEBUG] " __VA_ARGS__)
 #else
-#define debug(...) do{}while(0)
+#define debug(...) do { demo_info.debug_mode ? fprintf(stderr, "[DEBUG] " __VA_ARGS__) : 0; } while(0)
 #endif
 
 #define error(...) fprintf(stderr, "[ERROR] " __VA_ARGS__)

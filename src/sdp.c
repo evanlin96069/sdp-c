@@ -2,47 +2,54 @@
 #include <stdlib.h>
 #include <string.h>
 #include "demo.h"
-#include "demo_info.h"
 #include "print.h"
 
-int get_build_number();
+#define help(arg_name, help_info) printf("  %-24s %s\n", arg_name, help_info)
+
+static int get_build_number();
 
 enum {
     QUICK_MODE,
-    VERBOSE_MODE,
+    DUMP_MODE,
     TAS_MODE
 };
 
 int main(int argc, char* argv[]) {
-    if (argc < 2) {
-        error("Usage: sdp [options] <demo>\n");
-        return 1;
-    }
-
     int build_number = get_build_number();
 
     char* input_file = NULL;
     char* output_file = NULL;
+
     int mode = QUICK_MODE;
+    bool has_parse_level = false;
+    uint8_t parse_level = 3;
+    bool debug_mode = false;
+
     for (int i = 1; i < argc; i++) {
-        if (strcmp(argv[i], "--help") == 0) {
-            printf("Usage: sdp [options] <demo> \n");
+        if (strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "--help") == 0) {
+            printf("Usage: sdp [-d|-t] [options] <demo> \n");
             printf("Options:\n");
-            printf("--help          Display this information.\n");
-            printf("--version       Display version.\n");
-            printf("-v              Dump parsable info into a text file.\n");
-            printf("-t              Convert demo file to .cfg TAS file.\n");
-            printf("-o <file>       Place the output into <file>.\n");
+            help("-h, --help", "Display this information.");
+            help("-v, --version", "Display parser version information.");
+            help("-d, --dump", "Create a text representation of parsed data in the demo.");
+            help("-t, --tas", "Create a afterframes TAS script of the demo to be run with the spt plugin.");
+            help("-o <file>", "Place the output into <file>.");
+            help("-P[level]", "Set the parsing level for dump mode. (default level = 3)");
+            help("  -P0", "Parse the header.");
+            help("  -P1, -P", "Parse messages");
+            help("  -P2", "Parse Net/Svc messages.");
+            help("  -P3", "Parse User messages. (Not implemented)");
+            help("--debug", "Print debug information.");
             return 0;
         }
-        else if (strcmp(argv[i], "--version") == 0) {
+        else if (strcmp(argv[i], "-v") == 0 || strcmp(argv[i], "--version") == 0) {
             printf("sdp (build %d) by evanlin96069.\n", build_number);
             return 0;
         }
-        else if (strcmp(argv[i], "-v") == 0) {
-            mode = VERBOSE_MODE;
+        else if (strcmp(argv[i], "-d") == 0 || strcmp(argv[i], "--dump") == 0) {
+            mode = DUMP_MODE;
         }
-        else if (strcmp(argv[i], "-t") == 0) {
+        else if (strcmp(argv[i], "-t") == 0 || strcmp(argv[i], "--tas") == 0) {
             mode = TAS_MODE;
         }
         else if (strcmp(argv[i], "-o") == 0) {
@@ -50,15 +57,32 @@ int main(int argc, char* argv[]) {
                 output_file = argv[++i];
             }
             else {
-                error("Missing filename after \"-o\"\n");
+                error("Missing filename after \"-o\".\n");
                 return 1;
             }
+        }
+        else if (strncmp(argv[i], "-P", 2) == 0) {
+            if (strlen(argv[i]) == 2) {
+                parse_level = 1;
+            }
+            else {
+                int8_t level = argv[i][2] - '0';
+                if (level < 0 || level > 9) {
+                    error("Argument to \"-P\" should be a non-negative integer.\n");
+                    return 1;
+                }
+                parse_level = (uint8_t)level;
+            }
+            has_parse_level = true;
+        }
+        else if (strcmp(argv[i], "--debug") == 0) {
+            debug_mode = true;
         }
         else if (!input_file) {
             input_file = argv[i];
         }
         else if (argv[i][0] == '-') {
-            error("Unrecognized command line option \"%s\"\n", argv[i]);
+            error("Unrecognized command line option \"%s\".\n", argv[i]);
             return 1;
         }
         else {
@@ -70,25 +94,41 @@ int main(int argc, char* argv[]) {
         error("No input file.\n");
         return 1;
     }
-    if (mode != QUICK_MODE && !output_file) {
-        if (mode == VERBOSE_MODE) {
-            output_file = "out.txt";
+    if (mode != QUICK_MODE) {
+        info("Parsing demo...\n");
+        if (!output_file) {
+            if (mode == DUMP_MODE) {
+                output_file = "out.txt";
+            }
+            else if (mode == TAS_MODE) {
+                if (has_parse_level && parse_level < 1) {
+                    error("TAS mode require parse_level >= 1.\n");
+                }
+                output_file = "tas.cfg";
+            }
         }
-        else if (mode == TAS_MODE) {
-            output_file = "tas.cfg";
-        }
+    }
+    else if (!has_parse_level) {
+        parse_level = 1;
     }
 
     Demo* demo = new_demo(input_file);
 
-    if (mode != QUICK_MODE) {
-        info("Parsing demo...\n");
-    }
-    int measured_ticks = demo_parse(demo, mode == QUICK_MODE);
-    if (measured_ticks < 0) {
+    DemoTime demo_time = demo_parse(demo, parse_level, debug_mode);
+    if (demo_time.state == MEASURED_ERROR) {
         demo_free(demo);
         error("Error while parsing demo.\n");
         return 1;
+    }
+    if (demo_time.game == GAME_UNKNOWN) {
+        warning("Failed to detect game type. Demo might not parsed correctly");
+    }
+    else {
+        info("Game: %s\n", game_names[demo_time.game]);
+    }
+    if (demo_time.tick_interval == 0.0f) {
+        warning("Cannot find tick interval, use default value 0.015.\n");
+        demo_time.tick_interval = 0.015f;
     }
     if (mode == QUICK_MODE) {
         const DemoHeader* header = &demo->header;
@@ -104,10 +144,12 @@ int main(int argc, char* argv[]) {
         printf("PlayBackTicks:      %d\n", header->play_back_ticks);
         printf("PlayBackFrames:     %d\n", header->play_back_frames);
         printf("SignOnLength:       %d\n\n", header->sign_on_length);
-        printf("Measured ticks:     %d\n", measured_ticks);
-        printf("Measured time:      %.3f\n", measured_ticks / demo_info.tickrate);
+        if (demo_time.state != NOT_MEASURED) {
+            printf("Measured ticks:     %d\n", demo_time.ticks);
+            printf("Measured time:      %.3f\n", demo_time.ticks * demo_time.tick_interval);
+        }
     }
-    else if (mode == VERBOSE_MODE) {
+    else if (mode == DUMP_MODE) {
         info("Dumping verbose output...\n");
         FILE* output = fopen(output_file, "w");
         if (!output) {
@@ -136,7 +178,7 @@ int main(int argc, char* argv[]) {
     return 0;
 }
 
-int get_build_number() {
+static int get_build_number() {
     char* date = __DATE__;
     char* month[12] = { "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" };
     char day[12] = { 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
@@ -157,6 +199,6 @@ int get_build_number() {
     if (((y % 4) == 0) && m > 1) {
         build += 1;
     }
-    build -= 43720;  // Sep 13 2020
+    build -= 43720; // Sep 13 2020
     return build;
 }
