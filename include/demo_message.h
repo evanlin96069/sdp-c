@@ -2,6 +2,7 @@
 #define DEMO_MESSAGE_H
 
 #include "net_message.h"
+#include "custom_message.h"
 #include "vector.h"
 
 #define MACRO_ALL_MESSAGES(macro)   \
@@ -175,13 +176,15 @@ typedef struct {
 } DataTables;
 
 typedef struct {
-    uint8_t* remaining_data;
+    size_t remaining_bytes;
 } Stop;
 
 typedef struct {
-    uint32_t unknown;
+    uint32_t type;
     uint32_t size;
-    uint8_t* data;
+    union {
+        RadialMouseMenuCallback RadialMouseMenuCallback_message;
+    } data;
 } CustomData;
 
 typedef struct {

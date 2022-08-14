@@ -197,7 +197,8 @@ DemoTime demo_parse(Demo* demo, uint8_t parse_level, bool debug_mode) {
         if (demo_info.msg_settings->enum_ids[type] == Packet_MSG && tick >= 0 && tick > measured_ticks) {
             measured_ticks = tick;
         }
-    } while (type != demo_info.msg_settings->enum_ids[Stop_MSG]);
+    } while (bits->bit_size - bits->current >= 24); // would be 32 but the last byte is often cut off
+
     vector_shrink(demo->messages);
     bits_free(bits);
 

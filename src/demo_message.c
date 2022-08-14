@@ -290,29 +290,58 @@ DECL_FREE_FUNC(DataTables) {}
 
 // Stop
 DECL_PARSE_FUNC(Stop) {
+    DECL_PTR(Stop);
+    ptr->remaining_bytes = (bits->bit_size - bits->current) >> 3;
     return true;
 }
-DECL_PRINT_FUNC(Stop) {}
+DECL_PRINT_FUNC(Stop) {
+    const DECL_PTR(Stop);
+    fprintf(fp, "\t\t\tRemainingBytes: %zd\n", ptr->remaining_bytes);
+}
 DECL_FREE_FUNC(Stop) {}
 
 // CustomData
 DECL_PARSE_FUNC(CustomData) {
     DECL_PTR(CustomData);
-    ptr->unknown = bits_read_le_u32(bits);
+    ptr->type = bits_read_le_u32(bits);
     uint32_t byte_size = ptr->size = bits_read_le_u32(bits);
-    ptr->data = (uint8_t*)malloc_s(byte_size);
-    bits_read_bytes((char*)ptr->data, byte_size, bits);
+    size_t end_index = bits->current + (byte_size << 3);
+    if (ptr->type == 0) {
+        RadialMouseMenuCallback* msg = &ptr->data.RadialMouseMenuCallback_message;
+        msg->cursor_x = bits_read_le_u32(bits);
+        msg->cursor_y = bits_read_le_u32(bits);
+
+        msg->has_sar_message = (byte_size == 17);
+        if (msg->has_sar_message) {
+            msg->sar_message.id = bits_read_le_u8(bits);
+            msg->sar_message.demo_checksum = bits_read_le_u32(bits);
+            msg->sar_message.sar_checksum = bits_read_le_u32(bits);
+        }
+    }
+    bits_setpos(end_index, bits);
     return true;
 }
 DECL_PRINT_FUNC(CustomData) {
     const DECL_PTR(CustomData);
-    fprintf(fp, "\tUnknown: %d\n", ptr->unknown);
-    fprintf(fp, "\tSize: %d\n", ptr->size);
+    if (ptr->type == 0) {
+        fprintf(fp, "\tRadialMouseMenuCallback (0)\n");
+        const RadialMouseMenuCallback* msg = &ptr->data.RadialMouseMenuCallback_message;
+        fprintf(fp, "\t\tCursorX: %d\n", msg->cursor_x);
+        fprintf(fp, "\t\tCursorY: %d\n", msg->cursor_y);
+
+        if (msg->has_sar_message) {
+            fprintf(fp, "\t\tSourceAutoRecordMessage:\n");
+            fprintf(fp, "\t\t\tId: %d\n", msg->sar_message.id);
+            fprintf(fp, "\t\t\tDemoChecksum: %X\n", msg->sar_message.demo_checksum);
+            fprintf(fp, "\t\t\tSAR_Checksum: %X\n", msg->sar_message.sar_checksum);
+        }
+    }
+    else {
+        fprintf(fp, "\tUnknownMessage (%d)\n", ptr->type);
+        fprintf(fp, "\t\tSize: %d\n", ptr->size);
+    }
 }
-DECL_FREE_FUNC(CustomData) {
-    DECL_PTR(CustomData);
-    free(ptr->data);
-}
+DECL_FREE_FUNC(CustomData) {}
 
 // StringTables
 DECL_PARSE_FUNC(StringTables) {
