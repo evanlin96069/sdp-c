@@ -296,7 +296,7 @@ DECL_PARSE_FUNC(Stop) {
 }
 DECL_PRINT_FUNC(Stop) {
     const DECL_PTR(Stop);
-    fprintf(fp, "\t\t\tRemainingBytes: %zd\n", ptr->remaining_bytes);
+    fprintf(fp, "\t\tRemainingBytes: %zd\n", ptr->remaining_bytes);
 }
 DECL_FREE_FUNC(Stop) {}
 

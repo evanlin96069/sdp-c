@@ -158,12 +158,14 @@ DECL_NET_PRINT_FUNC(NetSignonState) {
     if (demo_info.demo_protocol >= 4) {
         fprintf(fp, "\t\t\tNumServerPlayers: %d\n", ptr->num_server_players);
         uint32_t len = ptr->ids_length;
-        fprintf(fp, "\t\t\tPlayersNetworkIds:\n\t\t\t[");
-        if (len > 0) {
-            for (uint32_t i = 0; i < len; i++) {
-                fprintf(fp, "%d%s", ptr->players_network_ids[i], (i == len - 1) ? "]\n" : ", ");
+        fprintf(fp, "\t\t\tPlayersNetworkIds: [ ");
+        for (uint32_t i = 0; i < len; i++) {
+            if (i != 0) {
+                fprintf(fp, ", ");
             }
+            fprintf(fp, "%d", ptr->players_network_ids[i]);
         }
+        fprintf(fp, "]\n");
         if (ptr->map_name_length > 0) {
             fprintf(fp, "\t\t\tMapName: %s\n", ptr->map_name);
         }
