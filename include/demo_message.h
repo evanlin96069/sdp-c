@@ -116,35 +116,49 @@ typedef struct {
 } ConsoleCmd;
 
 typedef struct {
-    bool has_command_number;
-    bool has_tick_count;
-    bool has_view_angles_x;
-    bool has_view_angles_y;
-    bool has_view_angles_z;
-    bool has_forward_move;
-    bool has_side_move;
-    bool has_up_move;
-    bool has_buttons;
-    bool has_impulse;
-    bool has_weapon_select;
-    bool has_weapon_subtype;
-    bool has_mouse_dx;
-    bool has_mouse_dy;
+    OPTIONAL(uint32_t, command_number);
+    OPTIONAL(uint32_t, tick_count);
+    OPTIONAL(float, view_angles_x);
+    OPTIONAL(float, view_angles_y);
+    OPTIONAL(float, view_angles_z);
+    OPTIONAL(float, forward_move);
+    OPTIONAL(float, side_move);
+    OPTIONAL(float, up_move);
+    OPTIONAL(uint32_t, buttons);
+    OPTIONAL(uint8_t, impulse);
+    OPTIONAL(uint32_t, weapon_select);
+    OPTIONAL(uint32_t, weapon_subtype);
+    OPTIONAL(int16_t, mouse_dx);
+    OPTIONAL(int16_t, mouse_dy);
 
-    uint32_t command_number;
-    uint32_t tick_count;
-    float view_angles_x;
-    float view_angles_y;
-    float view_angles_z;
-    float forward_move;
-    float side_move;
-    float up_move;
-    uint32_t buttons;
-    uint8_t impulse;
-    uint32_t weapon_select;
-    uint32_t weapon_subtype;
-    uint16_t mouse_dx;
-    uint16_t mouse_dy;
+    // DMoMM
+    uint8_t mm_unknown_weapon_flags;
+    OPTIONAL(bool, unknown_b_1);
+    bool unknown_b_2;
+    OPTIONAL(uint16_t, unknown_u11);
+    OPTIONAL(int32_t, mm_move_item_from_slot);
+    OPTIONAL(int32_t, mm_move_item_to_slot);
+    OPTIONAL(float, mm_stealth);
+    OPTIONAL(uint8_t, mm_use_item_id);
+    bool mm_unknown_item_flag;
+    OPTIONAL(int8_t, unknown_i6);
+    OPTIONAL(int8_t, mm_upgrade_skill_type);
+    OPTIONAL(int16_t, unknown_i16);
+    OPTIONAL(float, mm_lean_move);
+    OPTIONAL(bool, mm_sprint);
+    OPTIONAL(bool, mm_unknown_action_2);
+    OPTIONAL(bool, mm_kick);
+    OPTIONAL(bool, mm_unknown_action_4);
+    OPTIONAL(bool, mm_unknown_action_5);
+    OPTIONAL(bool, mm_shwo_charsheet);
+    OPTIONAL(bool, mm_unknown_action_7);
+    OPTIONAL(bool, mm_show_inventory_belt);
+    OPTIONAL(bool, mm_show_inventory_belt_select);
+    OPTIONAL(bool, mm_hide_inventory_belt_select);
+    OPTIONAL(bool, mm_show_objectives);
+    OPTIONAL(bool, mm_hide_objectives);
+    OPTIONAL(int32_t, mm_exit_book_id);
+    OPTIONAL(bool, mm_xana);
 } UserCmdInfo;
 
 typedef struct {
@@ -188,23 +202,16 @@ typedef struct {
 } CustomData;
 
 typedef struct {
-    bool has_entry_size;
-    bool has_entry_data;
-    bool has_num_of_client_entries;
-    bool has_client_entry_name;
-    bool has_client_entry_size;
-    bool has_client_entry_data;
-
     uint8_t num_of_tables;
     char* table_name;
     uint16_t num_of_entries;
     char* entry_name;
-    uint16_t entry_size;
-    uint8_t* entry_data;
-    uint16_t num_of_client_entries;
-    char* client_entry_name;
-    uint16_t client_entry_size;
-    uint8_t* client_entry_data;
+    OPTIONAL(uint16_t, entry_size);
+    OPTIONAL(uint8_t*, entry_data);
+    OPTIONAL(uint16_t, num_of_client_entries);
+    OPTIONAL(char*, client_entry_name);
+    OPTIONAL(uint16_t, client_entry_size);
+    OPTIONAL(uint8_t*, client_entry_data);
 } StringTable;
 
 typedef struct {

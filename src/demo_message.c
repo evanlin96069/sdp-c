@@ -200,18 +200,80 @@ static void parse_usercmd(UserCmdInfo* cmd, BitStream* bits) {
         cmd->weapon_select = bits_read_bits(11, bits);
         if ((cmd->has_weapon_subtype = bits_read_one_bit(bits)))
             cmd->weapon_subtype = bits_read_bits(6, bits);
+        if (demo_info.game == DMOMM)
+            cmd->mm_unknown_weapon_flags = bits_read_bits(2, bits);
     }
 
     if (demo_info.game == DMOMM) {
-        // there are much more usercmd data in DMoMM demos,
-        // but I don't know what they mean...
-        return;
-    }
+        if ((cmd->has_unknown_b_1 = bits_read_one_bit(bits))) {
+            cmd->unknown_b_1 = bits_read_one_bit(bits);
+            cmd->unknown_b_2 = bits_read_one_bit(bits);
+        }
+        if ((cmd->has_unknown_u11 = bits_read_one_bit(bits)))
+            cmd->unknown_u11 = bits_read_bits(11, bits);
+        if ((cmd->has_mm_move_item_from_slot = bits_read_one_bit(bits)))
+            cmd->mm_move_item_from_slot = bits_read_le_u32(bits);
+        if ((cmd->has_mm_move_item_to_slot = bits_read_one_bit(bits)))
+            cmd->mm_move_item_to_slot = bits_read_le_u32(bits);
+        if ((cmd->has_mm_stealth = bits_read_one_bit(bits)))
+            cmd->mm_stealth = bits_read_le_f32(bits);
+        if ((cmd->has_mm_use_item_id = bits_read_one_bit(bits))) {
+            cmd->mm_use_item_id = bits_read_le_u8(bits);
+            cmd->mm_unknown_item_flag = bits_read_one_bit(bits);
+        }
+        if ((cmd->has_unknown_i6 = bits_read_one_bit(bits)))
+            cmd->unknown_i6 = bits_read_bits(6, bits);
+        if ((cmd->has_mm_upgrade_skill_type = bits_read_one_bit(bits)))
+            cmd->mm_upgrade_skill_type = bits_read_le_u8(bits);
 
-    if ((cmd->has_mouse_dx = bits_read_one_bit(bits)))
-        cmd->mouse_dx = bits_read_le_u16(bits);
-    if ((cmd->has_mouse_dy = bits_read_one_bit(bits)))
-        cmd->mouse_dy = bits_read_le_u16(bits);
+        if ((cmd->has_mouse_dx = bits_read_one_bit(bits)))
+            cmd->mouse_dx = bits_read_le_u16(bits);
+        if ((cmd->has_mouse_dy = bits_read_one_bit(bits)))
+            cmd->mouse_dy = bits_read_le_u16(bits);
+
+        // ???
+        if ((cmd->has_unknown_i16 = bits_read_one_bit(bits)))
+            cmd->unknown_i16 = bits_read_le_u16(bits);
+
+        if ((cmd->has_mm_lean_move = bits_read_one_bit(bits)))
+            cmd->mm_lean_move = bits_read_le_f32(bits);
+
+        if ((cmd->has_mm_sprint = bits_read_one_bit(bits)))
+            cmd->mm_sprint = bits_read_one_bit(bits);
+        if ((cmd->has_mm_unknown_action_2 = bits_read_one_bit(bits)))
+            cmd->mm_unknown_action_2 = bits_read_one_bit(bits);
+        if ((cmd->has_mm_kick = bits_read_one_bit(bits)))
+            cmd->mm_kick = bits_read_one_bit(bits);
+        if ((cmd->has_mm_unknown_action_4 = bits_read_one_bit(bits)))
+            cmd->mm_unknown_action_4 = bits_read_one_bit(bits);
+        if ((cmd->has_mm_unknown_action_5 = bits_read_one_bit(bits)))
+            cmd->mm_unknown_action_5 = bits_read_one_bit(bits);
+        if ((cmd->has_mm_shwo_charsheet = bits_read_one_bit(bits)))
+            cmd->mm_shwo_charsheet = bits_read_one_bit(bits);
+        if ((cmd->has_mm_unknown_action_7 = bits_read_one_bit(bits)))
+            cmd->mm_unknown_action_7 = bits_read_one_bit(bits);
+        if ((cmd->has_mm_show_inventory_belt = bits_read_one_bit(bits)))
+            cmd->mm_show_inventory_belt = bits_read_one_bit(bits);
+        if ((cmd->has_mm_show_inventory_belt_select = bits_read_one_bit(bits)))
+            cmd->mm_show_inventory_belt_select = bits_read_one_bit(bits);
+        if ((cmd->has_mm_hide_inventory_belt_select = bits_read_one_bit(bits)))
+            cmd->mm_hide_inventory_belt_select = bits_read_one_bit(bits);
+        if ((cmd->has_mm_show_objectives = bits_read_one_bit(bits)))
+            cmd->mm_show_objectives = bits_read_one_bit(bits);
+        if ((cmd->has_mm_hide_objectives = bits_read_one_bit(bits)))
+            cmd->mm_hide_objectives = bits_read_one_bit(bits);
+
+        if ((cmd->has_mm_exit_book_id = bits_read_one_bit(bits)))
+            cmd->mm_exit_book_id = bits_read_le_u32(bits);
+        if ((cmd->has_mm_xana = bits_read_one_bit(bits)))
+            cmd->mm_xana = bits_read_one_bit(bits);
+    }
+    else {
+        if ((cmd->has_mouse_dx = bits_read_one_bit(bits)))
+            cmd->mouse_dx = bits_read_le_u16(bits);
+        if ((cmd->has_mouse_dy = bits_read_one_bit(bits)))
+            cmd->mouse_dy = bits_read_le_u16(bits);
+    }
 }
 
 DECL_PARSE_FUNC(UserCmd) {
@@ -259,14 +321,80 @@ DECL_PRINT_FUNC(UserCmd) {
         fprintf(fp, "\tWeaponSelect: %d\n", cmd->weapon_select);
         if (cmd->has_weapon_subtype)
             fprintf(fp, "\tWeaponSubtype: %d\n", cmd->weapon_subtype);
+        if (demo_info.game == DMOMM)
+            fprintf(fp, "\tUnknownWeaponFlags: %d\n", cmd->mm_unknown_weapon_flags);
     }
 
-    if (demo_info.game == DMOMM) return;
+    if (demo_info.game == DMOMM) {
+        if (cmd->has_unknown_b_1) {
+            fprintf(fp, "\tUnknown_b_1: %s\n", cmd->unknown_b_1 ? "true" : "false");
+            fprintf(fp, "\tUnknown_b_2: %s\n", cmd->unknown_b_2 ? "true" : "false");
+        }
+        if (cmd->has_unknown_u11)
+            fprintf(fp, "\tUnknown_u11: %d\n", cmd->unknown_u11);
+        if (cmd->has_mm_move_item_from_slot)
+            fprintf(fp, "\tMoveItemFromSlot: %d\n", cmd->mm_move_item_from_slot);
+        if (cmd->has_mm_move_item_to_slot)
+            fprintf(fp, "\ttMoveItemToSlot: %d\n", cmd->mm_move_item_to_slot);
+        if (cmd->has_mm_stealth)
+            fprintf(fp, "\tStealth: %.3f\n", cmd->mm_stealth);
+        if (cmd->has_mm_use_item_id) {
+            fprintf(fp, "\tUseItemId: %d\n", cmd->mm_use_item_id);
+            fprintf(fp, "\tUnknownItemFlag: %s\n", cmd->mm_unknown_item_flag ? "true" : "false");
+        }
+        if (cmd->has_unknown_i6)
+            fprintf(fp, "\tUnknown_i6: %d\n", cmd->unknown_i6);
+        if (cmd->has_mm_upgrade_skill_type)
+            fprintf(fp, "\tUpgradeSkillType: %d\n", cmd->mm_upgrade_skill_type);
 
-    if (cmd->has_mouse_dx)
-        fprintf(fp, "\tMouseDx: %d\n", cmd->mouse_dx);
-    if (cmd->has_mouse_dy)
-        fprintf(fp, "\tMouseDy: %d\n", cmd->mouse_dy);
+        if (cmd->has_mouse_dx)
+            fprintf(fp, "\tMouseDx: %d\n", cmd->mouse_dx);
+        if (cmd->has_mouse_dy)
+            fprintf(fp, "\tMouseDy: %d\n", cmd->mouse_dy);
+
+        // ???
+        if (cmd->has_unknown_i16)
+            fprintf(fp, "\tUnknown_i16: %d\n", cmd->unknown_i16);
+
+        if (cmd->has_mm_lean_move)
+            fprintf(fp, "\tLeanMove: %.3f\n", cmd->mm_lean_move);
+
+        if (cmd->has_mm_sprint)
+            fprintf(fp, "\tSprint: %s\n", cmd->mm_sprint ? "true" : "false");
+        if (cmd->has_mm_unknown_action_2)
+            fprintf(fp, "\tUnknownAction_2: %s\n", cmd->mm_unknown_action_2 ? "true" : "false");
+        if (cmd->has_mm_kick)
+            fprintf(fp, "\tKick: %s\n", cmd->mm_kick ? "true" : "false");
+        if (cmd->has_mm_unknown_action_4)
+            fprintf(fp, "\tUnknownAction_4: %s\n", cmd->mm_unknown_action_4 ? "true" : "false");
+        if (cmd->has_mm_unknown_action_5)
+            fprintf(fp, "\tUnknownAction_5: %s\n", cmd->mm_unknown_action_5 ? "true" : "false");
+        if (cmd->has_mm_shwo_charsheet)
+            fprintf(fp, "\tShowCharsheet: %s\n", cmd->mm_shwo_charsheet ? "true" : "false");
+        if (cmd->has_mm_unknown_action_7)
+            fprintf(fp, "\tUnknownAction_7: %s\n", cmd->mm_unknown_action_7 ? "true" : "false");
+        if (cmd->has_mm_show_inventory_belt)
+            fprintf(fp, "\tShowInventoryBelt: %s\n", cmd->mm_show_inventory_belt ? "true" : "false");
+        if (cmd->has_mm_show_inventory_belt_select)
+            fprintf(fp, "\tShowInventoryBeltSelect: %s\n", cmd->mm_show_inventory_belt_select ? "true" : "false");
+        if (cmd->has_mm_hide_inventory_belt_select)
+            fprintf(fp, "\tHideInventoryBeltSelect: %s\n", cmd->mm_hide_inventory_belt_select ? "true" : "false");
+        if (cmd->has_mm_show_objectives)
+            fprintf(fp, "\tShowObjectives: %s\n", cmd->mm_show_objectives ? "true" : "false");
+        if (cmd->has_mm_hide_objectives)
+            fprintf(fp, "\tHideObjectives: %s\n", cmd->mm_hide_objectives ? "true" : "false");
+
+        if (cmd->has_mm_exit_book_id)
+            fprintf(fp, "\tExitBookId: %d\n", cmd->mm_exit_book_id);
+        if (cmd->has_mm_xana)
+            fprintf(fp, "\tXana: %s\n", cmd->mm_xana ? "true" : "false");
+    }
+    else {
+        if (cmd->has_mouse_dx)
+            fprintf(fp, "\tMouseDx: %d\n", cmd->mouse_dx);
+        if (cmd->has_mouse_dy)
+            fprintf(fp, "\tMouseDy: %d\n", cmd->mouse_dy);
+    }
 }
 DECL_FREE_FUNC(UserCmd) {}
 

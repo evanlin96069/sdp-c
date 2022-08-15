@@ -157,6 +157,8 @@ typedef struct {
 extern const NetSvcMessageSettings oe_net_msg_settings;
 extern const NetSvcMessageSettings ne_net_msg_settings;
 
+#define OPTIONAL(type, name) bool has_ ## name; type name
+
 typedef struct {
     uint8_t empty;
 } NetNop;
@@ -263,8 +265,7 @@ typedef struct {
 
 typedef struct {
     uint32_t table_id;
-    bool has_num_changed_entries;
-    uint16_t num_changed_entries;
+    OPTIONAL(uint16_t, num_changed_entries);
     uint32_t length;
     uint8_t* data;
 } SvcUpdateStringTable;
@@ -309,8 +310,7 @@ typedef struct {
 typedef struct {
     VectorCoord pos;
     uint32_t decal_texture_index;
-    bool has_entity_index;
-    uint32_t entity_index;
+    OPTIONAL(uint32_t, entity_index);
     uint32_t model_index;
     bool low_priority;
 } SvcBspDecal;
