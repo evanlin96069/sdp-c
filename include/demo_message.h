@@ -167,13 +167,35 @@ typedef struct {
     UserCmdInfo data;
 } UserCmd;
 
+enum SendPropType {
+    SEND_PROP_INT,
+    SEND_PROP_FLOAT,
+    SEND_PROP_VECTOR3,
+    SEND_PROP_VECTOR2,
+    SEND_PROP_STRING,
+    SEND_PROP_ARRAY,
+    SEND_PROP_DATATABLE,
+};
+
+typedef struct {
+    enum SendPropType send_prop_type;
+    char* send_prop_name;
+    uint32_t send_prop_flags;
+    uint8_t priority;
+    char* exclude_dt_name;
+    float low_value;
+    float high_value;
+    uint32_t num_bits;
+    uint32_t num_element;
+} SendProp;
+
+typedef VECTOR(SendProp) Vector_SendProp;
+
 typedef struct {
     bool needs_decoder;
     char* net_table_name;
     uint32_t num_of_props;
-    uint32_t send_prop_type;
-    char* send_prop_name;
-    uint32_t send_prop_flags;
+    Vector_SendProp send_props;
 } SendTable;
 
 typedef struct {
@@ -183,10 +205,13 @@ typedef struct {
     char* data_table_name;
 } ServerClassInfo;
 
+typedef VECTOR(SendTable) Vector_SendTable;
+typedef VECTOR(ServerClassInfo) Vector_ServerClassInfo;
+
 typedef struct {
     uint32_t size;
-    SendTable* send_table;
-    ServerClassInfo* server_class_info;
+    Vector_SendTable send_tables;
+    Vector_ServerClassInfo server_class_info;
 } DataTables;
 
 typedef struct {
