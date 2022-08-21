@@ -21,8 +21,7 @@ int main(int argc, char* argv[]) {
     char* output_file = NULL;
 
     int mode = QUICK_MODE;
-    bool has_parse_level = false;
-    uint8_t parse_level = 3;
+    int parse_level = -1;
     bool debug_mode = false;
 
     for (int i = 1; i < argc; i++) {
@@ -73,7 +72,6 @@ int main(int argc, char* argv[]) {
                 }
                 parse_level = (uint8_t)level;
             }
-            has_parse_level = true;
         }
         else if (strcmp(argv[i], "--debug") == 0) {
             debug_mode = true;
@@ -101,34 +99,31 @@ int main(int argc, char* argv[]) {
                 output_file = "out.txt";
             }
             else if (mode == TAS_MODE) {
-                if (has_parse_level && parse_level < 1) {
-                    error("TAS mode require parse_level >= 1.\n");
-                }
                 output_file = "tas.cfg";
             }
         }
     }
-    else if (!has_parse_level) {
+    else if (parse_level < 0) {
         parse_level = 1;
     }
 
     Demo* demo = new_demo(input_file);
 
-    DemoTime demo_time = demo_parse(demo, parse_level, debug_mode);
-    if (demo_time.state == MEASURED_ERROR) {
+    int result = demo_parse(demo, parse_level, debug_mode);
+    if (result == MEASURED_ERROR) {
         demo_free(demo);
         error("Error while parsing demo.\n");
         return 1;
     }
-    if (demo_time.game == GAME_UNKNOWN) {
+    if (demo->game == GAME_UNKNOWN) {
         warning("Failed to detect game type. Demo might not parsed correctly");
     }
     else {
-        info("Game: %s\n", game_names[demo_time.game]);
+        info("Game: %s\n", game_names[demo->game]);
     }
-    if (demo_time.tick_interval == 0.0f) {
+    if (demo->tick_interval == 0.0f) {
         warning("Cannot find tick interval, use default value 0.015.\n");
-        demo_time.tick_interval = 0.015f;
+        demo->tick_interval = 0.015f;
     }
     if (mode == QUICK_MODE) {
         const DemoHeader* header = &demo->header;
@@ -144,9 +139,9 @@ int main(int argc, char* argv[]) {
         printf("PlayBackTicks:      %d\n", header->play_back_ticks);
         printf("PlayBackFrames:     %d\n", header->play_back_frames);
         printf("SignOnLength:       %d\n\n", header->sign_on_length);
-        if (demo_time.state != NOT_MEASURED) {
-            printf("Measured ticks:     %d\n", demo_time.ticks);
-            printf("Measured time:      %.3f\n", demo_time.ticks * demo_time.tick_interval);
+        if (result != NOT_MEASURED) {
+            printf("Measured ticks:     %d\n", demo->measured_ticks);
+            printf("Measured time:      %.3f\n", demo->measured_ticks * demo->tick_interval);
         }
     }
     else if (mode == DUMP_MODE) {
@@ -162,10 +157,15 @@ int main(int argc, char* argv[]) {
         info("Text file %s created.\n", output_file);
     }
     else if (mode == TAS_MODE) {
+        if (demo->parse_level < 1) {
+            error("TAS mode require parse_level >= 1.\n");
+            demo_free(demo);
+            return 1;
+        }
         info("Creating TAS script...\n");
         FILE* output = fopen(output_file, "w");
         if (!output) {
-            fprintf(stderr, "Cannot create output file %s.\n", output_file);
+            error("Cannot create output file %s.\n", output_file);
             demo_free(demo);
             return 1;
         }

@@ -17,15 +17,6 @@ typedef struct {
     uint32_t sign_on_length;
 } DemoHeader;
 
-typedef VECTOR(DemoMessage) Vector_DemoMessage;
-
-typedef struct {
-    char* path;
-    char* file_name;
-    DemoHeader header;
-    Vector_DemoMessage messages;
-} Demo;
-
 enum Game {
     DMOMM,
     HL2_OE,
@@ -38,23 +29,30 @@ enum Game {
     GAME_COUNT
 };
 
-typedef enum {
+typedef VECTOR(DemoMessage) Vector_DemoMessage;
+
+typedef struct {
+    char* path;
+    char* file_name;
+    enum Game game;
+    int parse_level;
+    int measured_ticks;
+    float tick_interval;
+
+    DemoHeader header;
+    Vector_DemoMessage messages;
+} Demo;
+
+enum {
     MEASURED_SUCCESS,
     MEASURED_ERROR,
     NOT_MEASURED
-} DemoTimeState;
-
-typedef struct {
-    DemoTimeState state;
-    enum Game game;
-    int ticks;
-    float tick_interval;
-} DemoTime;
+};
 
 extern const char* game_names[GAME_COUNT];
 
 Demo* new_demo(char* path);
-DemoTime demo_parse(Demo* demo, uint8_t parse_level, bool debug_mode);
+int demo_parse(Demo* demo, int parse_level, bool debug_mode);
 void demo_print_header(const Demo* demo, FILE* fp);
 void demo_verbose(const Demo* demo, FILE* fp);
 void demo_gen_tas_script(const Demo* demo, FILE* fp);

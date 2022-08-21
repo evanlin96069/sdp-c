@@ -14,7 +14,7 @@ typedef struct {
     const DemoMessageSettings* msg_settings;
     const NetSvcMessageSettings* net_msg_settings;
 
-    uint8_t parse_level;
+    int parse_level;
     bool debug_mode;
 } DemoInfo;
 

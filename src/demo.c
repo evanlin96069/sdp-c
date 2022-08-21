@@ -62,26 +62,18 @@ static void print_header(const Demo* demo, FILE* fp) {
     fprintf(fp, "SignOnLength: %d\n", header->sign_on_length);
 }
 
-DemoTime demo_parse(Demo* demo, uint8_t parse_level, bool debug_mode) {
-    demo_info.parse_level = parse_level;
+int demo_parse(Demo* demo, int parse_level, bool debug_mode) {
     demo_info.debug_mode = debug_mode;
 
     BitStream* bits = bits_load_file(demo->path);
-    DemoTime demo_time = { 0 };
     if (!bits) {
         error("Cannot open file %s.\n", demo->path);
-        demo_time.state = MEASURED_ERROR;
-        return demo_time;
+        return MEASURED_ERROR;
     }
 
     int measured_ticks = 0;
 
     parse_header(demo, bits);
-    if (parse_level == 0) {
-        // only parse header
-        demo_time.state = NOT_MEASURED;
-        return demo_time;
-    }
 
     demo_info.demo_protocol = demo->header.demo_protocol;
     demo_info.network_protocol = demo->header.network_protocol;
@@ -90,15 +82,17 @@ DemoTime demo_parse(Demo* demo, uint8_t parse_level, bool debug_mode) {
     demo_info.net_msg_settings = NULL;
 
     // TODO: needs improvement
+    int supported_parse_level = 0;
     demo_info.game = GAME_UNKNOWN;
     demo_info.has_tick_interval = false;
-    demo_time.tick_interval = 0.0f;
+    demo->tick_interval = 0.0f;
     demo_info.MSSC = 1;
     switch (demo_info.demo_protocol) {
     case 2:
         if (demo_info.network_protocol == 7) {
             demo_info.game = DMOMM;
-            demo_time.tick_interval = 0.015f;
+            supported_parse_level = 1;
+            demo->tick_interval = 0.015f;
         }
         demo_info.msg_settings = &portal_3420_msg_settings;
         demo_info.net_msg_settings = &oe_net_msg_settings;
@@ -109,27 +103,32 @@ DemoTime demo_parse(Demo* demo, uint8_t parse_level, bool debug_mode) {
         {
         case 7:
             demo_info.game = HL2_OE;
-            demo_time.tick_interval = 0.015f;
+            supported_parse_level = 1;
+            demo->tick_interval = 0.015f;
             demo_info.msg_settings = &portal_3420_msg_settings;
             break;
         case 11:
             demo_info.game = PORTAL_3258;
-            demo_time.tick_interval = 0.015f;
+            supported_parse_level = 1;
+            demo->tick_interval = 0.015f;
             demo_info.msg_settings = &portal_3420_msg_settings;
             break;
         case 14:
             demo_info.game = PORTAL_3420;
-            demo_time.tick_interval = 0.015f;
+            supported_parse_level = 1;
+            demo->tick_interval = 0.015f;
             demo_info.msg_settings = &portal_3420_msg_settings;
             break;
         case 15:
             demo_info.game = PORTAL_5135;
-            demo_time.tick_interval = 0.015f;
+            supported_parse_level = 2;
+            demo->tick_interval = 0.015f;
             demo_info.msg_settings = &portal_5135_msg_settings;
             break;
         case 24:
             demo_info.game = PORTAL_1910503;
-            demo_time.tick_interval = 0.015f;
+            supported_parse_level = 2;
+            demo->tick_interval = 0.015f;
             demo_info.msg_settings = &portal_5135_msg_settings;
             break;
         default:
@@ -140,8 +139,9 @@ DemoTime demo_parse(Demo* demo, uint8_t parse_level, bool debug_mode) {
     case 4:
         if (demo_info.network_protocol == 2001) {
             demo_info.game = PORTAL_2;
+            supported_parse_level = 2;
             // 0x3C888889
-            demo_time.tick_interval = 0.016666667f;
+            demo->tick_interval = 0.016666667f;
             demo_info.MSSC = 2;
         }
         demo_info.msg_settings = &ne_msg_settings;
@@ -150,11 +150,28 @@ DemoTime demo_parse(Demo* demo, uint8_t parse_level, bool debug_mode) {
     default:
         error("Unsupported demo protocol: %d\n", demo_info.demo_protocol);
         bits_free(bits);
-        demo_time.state = MEASURED_ERROR;
-        return demo_time;
+        return MEASURED_ERROR;
     }
-    demo_time.game = demo_info.game;
 
+    if (parse_level < 0) {
+        // auto detect parse level
+        parse_level = supported_parse_level;
+        debug("Auto set parse level to %d.\n", parse_level);
+    }
+    else if (parse_level > supported_parse_level) {
+        warning("Selected parse level %d is higher than the supported parse level %d.\n", parse_level, supported_parse_level);
+    }
+
+    demo->game = demo_info.game;
+    demo->parse_level = demo_info.parse_level = parse_level;
+
+    if (parse_level == 0) {
+        // only parse header
+        bits_free(bits);
+        return NOT_MEASURED;
+    }
+
+    int result = MEASURED_SUCCESS;
     DemoMessageType type;
     uint32_t count = 0;
     do {
@@ -183,14 +200,14 @@ DemoTime demo_parse(Demo* demo, uint8_t parse_level, bool debug_mode) {
             bool success = demo_info.msg_settings->func_table[type].parse(&msg.data, bits);
             if (!success) {
                 warning("Failed to parse message %s (%d) at %d.\n", name, type, count);
-                demo_time.state = MEASURED_ERROR;
+                result = MEASURED_ERROR;
                 break;
             }
             vector_push(demo->messages, msg);
         }
         else {
             error("Unexpected message type %d at %d.\n", type, count);
-            demo_time.state = MEASURED_ERROR;
+            result = MEASURED_ERROR;
             break;
         }
 
@@ -202,13 +219,12 @@ DemoTime demo_parse(Demo* demo, uint8_t parse_level, bool debug_mode) {
     vector_shrink(demo->messages);
     bits_free(bits);
 
-    demo_time.ticks = measured_ticks;
-    demo_time.state = MEASURED_SUCCESS;
+    demo->measured_ticks = measured_ticks;
     if (demo_info.has_tick_interval) {
         debug("Found tick interval: %f\n", demo_info.tick_interval);
-        demo_time.tick_interval = demo_info.tick_interval;
+        demo->tick_interval = demo_info.tick_interval;
     }
-    return demo_time;
+    return result;
 }
 
 void demo_verbose(const Demo* demo, FILE* fp) {
