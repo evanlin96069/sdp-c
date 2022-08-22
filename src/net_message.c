@@ -69,7 +69,7 @@ DECL_NET_FREE_FUNC(NetSplitScreenUser) {}
 DECL_NET_PARSE_FUNC(NetTick) {
     DECL_PTR(NetTick);
     ptr->tick = bits_read_le_u32(bits);
-    if (demo_info.game != HL2_OE) {
+    if (demo_info.network_protocol > 10) {
         ptr->host_frame_time = bits_read_le_u16(bits);
         ptr->host_frame_time_std_deviation = bits_read_le_u16(bits);
     }
@@ -78,7 +78,7 @@ DECL_NET_PARSE_FUNC(NetTick) {
 DECL_NET_PRINT_FUNC(NetTick) {
     const DECL_PTR(NetTick);
     fprintf(fp, "\t\t\tTick: %d\n", ptr->tick);
-    if (demo_info.game != HL2_OE) {
+    if (demo_info.network_protocol > 10) {
         fprintf(fp, "\t\t\tHostFrameTime: %.3f\n", (float)ptr->host_frame_time / NET_TICK_SCALEUP);
         fprintf(fp, "\t\t\tHostFrameTimeStdDev: %.3f\n", (float)ptr->host_frame_time_std_deviation / NET_TICK_SCALEUP);
     }

@@ -50,7 +50,7 @@ DECL_PARSE_FUNC(Packet) {
             count++;
             NetSvcMessage msg = { 0 };
             // parse net message
-            NetSvcMessageType type = msg.type = bits_read_bits(6, bits);
+            NetSvcMessageType type = msg.type = bits_read_bits((demo_info.network_protocol <= 14) ? 5 : 6, bits);
             if (type < NET_MSG_COUNT) {
                 const char* name = demo_info.net_msg_settings->names[type];
                 debug("Parsing NET/SVC message %s (%d) at %d.\n", name, type, count);
@@ -70,6 +70,9 @@ DECL_PARSE_FUNC(Packet) {
         vector_shrink(ptr->data);
         if (bits->current > end_index || !success) {
             warning("Packet not parsed correctly.\n");
+        }
+        else if (end_index - bits->current >= 8) {
+            warning("Had more than 1 byte remain after parsing Packet.\n");
         }
     }
     bits_setpos(end_index, bits);
@@ -156,8 +159,8 @@ DECL_FREE_FUNC(ConsoleCmd) {
 static void parse_usercmd(UserCmdInfo* cmd, BitStream* bits) {
     if ((cmd->has_command_number = bits_read_one_bit(bits)))
         cmd->command_number = bits_read_le_u32(bits);
-    if (demo_info.demo_protocol < 3) {
-        cmd->has_tick_count = demo_info.game == DMOMM && bits_read_one_bit(bits);
+    if (demo_info.network_protocol <= 7) {
+        cmd->has_tick_count = bits_read_one_bit(bits);
         if (cmd->has_tick_count)
             cmd->tick_count = bits_read_le_u32(bits);
         if ((cmd->has_view_angles_x = bits_read_one_bit(bits)))
@@ -291,6 +294,12 @@ DECL_PARSE_FUNC(UserCmd) {
         warning("Usercmd not parsed correctly.\n");
     }
 
+    /*
+    if (end_index - bits->current >= 8) {
+        warning("Had more than 1 byte remain after parsing Usercmd.\n");
+    }
+    */
+
     bits_setpos(end_index, bits);
     return true;
 }
@@ -402,8 +411,38 @@ DECL_FREE_FUNC(UserCmd) {}
 
 // DataTables
 
+static int get_send_prop_type(int type) {
+    const int old_props[] = {
+        SEND_PROP_INT, SEND_PROP_FLOAT,
+        SEND_PROP_VECTOR3, SEND_PROP_STRING,
+        SEND_PROP_ARRAY, SEND_PROP_DATATABLE
+    };
+
+    const int new_props[] = {
+        SEND_PROP_INT, SEND_PROP_FLOAT, SEND_PROP_VECTOR3, SEND_PROP_VECTOR2,
+        SEND_PROP_STRING, SEND_PROP_ARRAY, SEND_PROP_DATATABLE
+    };
+
+    const int* props;
+    int props_size;
+    if (demo_info.network_protocol <= 14) {
+        props = old_props;
+        props_size = sizeof(old_props) / sizeof(int);
+    }
+    else {
+        props = new_props;
+        props_size = sizeof(new_props) / sizeof(int);
+    }
+
+    if (type < props_size)
+        return props[type];
+    return SEND_PROP_INVALID;
+}
+
 static bool parse_send_prop(SendProp* thisptr, BitStream* bits) {
-    thisptr->send_prop_type = bits_read_bits(5, bits);
+    thisptr->send_prop_type = get_send_prop_type(bits_read_bits(5, bits));
+    if (thisptr->send_prop_type == SEND_PROP_INVALID)
+        return false;
     thisptr->send_prop_name = bits_read_str(bits);
 
     uint32_t send_prop_flag_bits = 0;
@@ -411,7 +450,7 @@ static bool parse_send_prop(SendProp* thisptr, BitStream* bits) {
         send_prop_flag_bits = 11;
     }
     else if (demo_info.demo_protocol == 3) {
-        send_prop_flag_bits = (demo_info.game == HL2_OE) ? 13 : 16;
+        send_prop_flag_bits = (demo_info.network_protocol <= 7) ? 13 : 16;
     }
     else if (demo_info.demo_protocol == 4) {
         send_prop_flag_bits = 19;
@@ -480,7 +519,7 @@ static void free_send_prop(SendProp* thisptr) {
 static bool parse_send_table(SendTable* thisptr, BitStream* bits) {
     thisptr->needs_decoder = bits_read_one_bit(bits);
     thisptr->net_table_name = bits_read_str(bits);
-    thisptr->num_of_props = bits_read_bits((demo_info.game == HL2_OE) ? 9 : 10, bits);
+    thisptr->num_of_props = bits_read_bits((demo_info.network_protocol <= 7) ? 9 : 10, bits);
     thisptr->send_props.capacity = 0;
     thisptr->send_props.size = 0;
     if (thisptr->num_of_props == 0)
@@ -535,8 +574,8 @@ DECL_PARSE_FUNC(DataTables) {
     DECL_PTR(DataTables);
     uint32_t byte_size = bits_read_le_u32(bits);
     size_t end_index = bits->current + (byte_size << 3);
-    bool error = false;
     if (demo_info.parse_level >= 2) {
+        bool error = false;
         ptr->send_tables.capacity = 0;
         ptr->send_tables.size = 0;
         while (bits_read_one_bit(bits)) {
@@ -559,9 +598,12 @@ DECL_PARSE_FUNC(DataTables) {
             }
             vector_shrink(ptr->server_class_info);
         }
-    }
-    if (error || bits->current > end_index) {
-        warning("DataTables not parsed correctly.\n");
+        if (error || bits->current > end_index) {
+            warning("DataTables not parsed correctly.\n");
+        }
+        else if (end_index - bits->current >= 8) {
+            warning("Had more than 1 byte remain after parsing DataTables.\n");
+        }
     }
     bits_setpos(end_index, bits);
     return true;

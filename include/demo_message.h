@@ -168,6 +168,7 @@ typedef struct {
 } UserCmd;
 
 enum SendPropType {
+    SEND_PROP_INVALID = -1,
     SEND_PROP_INT,
     SEND_PROP_FLOAT,
     SEND_PROP_VECTOR3,

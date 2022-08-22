@@ -103,19 +103,19 @@ int demo_parse(Demo* demo, int parse_level, bool debug_mode) {
         {
         case 7:
             demo_info.game = HL2_OE;
-            supported_parse_level = 1;
+            supported_parse_level = 2;
             demo->tick_interval = 0.015f;
             demo_info.msg_settings = &portal_3420_msg_settings;
             break;
         case 11:
             demo_info.game = PORTAL_3258;
-            supported_parse_level = 1;
+            supported_parse_level = 2;
             demo->tick_interval = 0.015f;
             demo_info.msg_settings = &portal_3420_msg_settings;
             break;
         case 14:
             demo_info.game = PORTAL_3420;
-            supported_parse_level = 1;
+            supported_parse_level = 2;
             demo->tick_interval = 0.015f;
             demo_info.msg_settings = &portal_3420_msg_settings;
             break;
