@@ -13,11 +13,11 @@ Options:
 - `-d, --dump`
 &emsp;Create a text representation of parsed data in the demo.
 - `-t, --tas`
-&emsp;Create a afterframes TAS script of the demo to be run with the [spt plugin](https://github.com/YaLTeR/SourcePauseTool).
+&emsp;Create a afterframes TAS script of the demo to be run with the [SPT plugin](https://github.com/YaLTeR/SourcePauseTool).
 - `-o <file>`
 &emsp;Place the output into `<file>`.
 - `-P[level]`
-&emsp;Set the parsing level for dump mode. (default level = 3)
+&emsp;Set the parsing level for dump mode. (default = auto select)
     - `-P0`
     &emsp;Parse the header.
     - `-P1, -P`
@@ -28,6 +28,24 @@ Options:
     &emsp;Parse User messages. (Not implemented)
 - `--debug`
 &emsp; Print debug information.
+
+## Supported Game Versions
+| Game | Basic<br/>Timing | UserCmd<br/>Parsing | Net/Svc Message<br/>Parsing | DataTables<br/>Parsing | 
+| ----------------------------- | :-: | :-: | :-: | :-: |
+| Dark Messiah of Might & Magic | ✅ | 🔶 | ❌ | ❌ |
+| Half-Life 2 Old Engine        | ✅ | ✅ | ✅ | ✅ |
+| Portal (3258)                 | ✅ | ✅ | ✅ | ✅ |
+| Portal (3420)                 | ✅ | ✅ | ✅ | ✅ |
+| Source Unpack (5135)          | ✅ | ✅ | ✅ | ✅ |
+| Steampipe HL2/Portal          | ✅ | ✅ | ✅ | ✅ |
+| Portal 2                      | ✅ | ✅ | ✅ | ✅ |
+
+- Not implemented
+    - StringTables parsing
+    - User message parsing
+    - Entity parsing
+    - Game event parsing
+    - Sound parsing
 
 ## Building
 ```bash
