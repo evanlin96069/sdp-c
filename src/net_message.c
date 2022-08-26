@@ -391,7 +391,7 @@ DECL_NET_FREE_FUNC(SvcCreateStringTable) {
 // SvcUpdateStringTable
 DECL_NET_PARSE_FUNC(SvcUpdateStringTable) {
     DECL_PTR(SvcUpdateStringTable);
-    ptr->table_id = bits_read_bits(5, bits);
+    ptr->table_id = bits_read_bits((demo_info.network_protocol <= 6) ? 4 : 5, bits);
     ptr->has_num_changed_entries = bits_read_one_bit(bits);
     if (ptr->has_num_changed_entries) {
         ptr->num_changed_entries = bits_read_le_u16(bits);

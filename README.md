@@ -21,19 +21,19 @@ Options:
     - `-P0`
     &emsp;Parse the header.
     - `-P1, -P`
-    &emsp;Parse messages.
+    &emsp;Basic timging and Parse Usercmd.
     - `-P2`
-    &emsp;Parse Net/Svc messages.
-    - `-P3`
-    &emsp;Parse User messages. (Not implemented)
+    &emsp;Parse Net/Svc messages and DataTables.
 - `--debug`
 &emsp; Print debug information.
 
 ## Supported Game Versions
 | Game | Basic<br/>Timing | UserCmd<br/>Parsing | Net/Svc Message<br/>Parsing | DataTables<br/>Parsing | 
 | ----------------------------- | :-: | :-: | :-: | :-: |
+| Half-Life 2 Old Engine (2153) | ✅ | ✅ | ✅ | ❌ |
+| Half-Life 2 Old Engine (2187) | ✅ | ✅ | ✅ | ❌ |
 | Dark Messiah of Might & Magic | ✅ | 🔶 | ❌ | ❌ |
-| Half-Life 2 Old Engine        | ✅ | ✅ | ✅ | ✅ |
+| Half-Life 2 Old Engine (4044) | ✅ | ✅ | ✅ | ✅ |
 | Portal (3258)                 | ✅ | ✅ | ✅ | ✅ |
 | Portal (3420)                 | ✅ | ✅ | ✅ | ✅ |
 | Source Unpack (5135)          | ✅ | ✅ | ✅ | ✅ |

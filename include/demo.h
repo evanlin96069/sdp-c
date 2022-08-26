@@ -18,8 +18,10 @@ typedef struct {
 } DemoHeader;
 
 enum Game {
+    HL2_OE_2153,
+    HL2_OE_2187,
     DMOMM,
-    HL2_OE,
+    HL2_OE_4044,
     PORTAL_3258,
     PORTAL_3420,
     PORTAL_5135,

@@ -98,15 +98,15 @@ DECL_PRINT_FUNC(Packet) {
     fprintf(fp, "\tInSequence: %d\n", ptr->in_sequence);
     fprintf(fp, "\tOutSequence: %d\n", ptr->out_sequence);
 
-    if (demo_info.parse_level < 2) return;
-
-    fprintf(fp, "\tNET/SVC-Messages:\n");
-    for (size_t i = 0; i < ptr->data.size; i++) {
-        NetSvcMessage* msg = &ptr->data.data[i];
-        NetSvcMessageType type = msg->type;
-        const char* name = demo_info.net_msg_settings->names[type];
-        fprintf(fp, "\t\t%s (%d)\n", name, type);
-        demo_info.net_msg_settings->func_table[type].print(&msg->data, fp);
+    if (demo_info.parse_level >= 2) {
+        fprintf(fp, "\tNET/SVC-Messages:\n");
+        for (size_t i = 0; i < ptr->data.size; i++) {
+            NetSvcMessage* msg = &ptr->data.data[i];
+            NetSvcMessageType type = msg->type;
+            const char* name = demo_info.net_msg_settings->names[type];
+            fprintf(fp, "\t\t%s (%d)\n", name, type);
+            demo_info.net_msg_settings->func_table[type].print(&msg->data, fp);
+        }
     }
 }
 DECL_FREE_FUNC(Packet) {
@@ -441,8 +441,10 @@ static int get_send_prop_type(int type) {
 
 static bool parse_send_prop(SendProp* thisptr, BitStream* bits) {
     thisptr->send_prop_type = get_send_prop_type(bits_read_bits(5, bits));
-    if (thisptr->send_prop_type == SEND_PROP_INVALID)
+    if (thisptr->send_prop_type == SEND_PROP_INVALID) {
+        warning("Invalid SendProp type in DataTables.\n");
         return false;
+    }
     thisptr->send_prop_name = bits_read_str(bits);
 
     uint32_t send_prop_flag_bits = 0;
@@ -459,26 +461,20 @@ static bool parse_send_prop(SendProp* thisptr, BitStream* bits) {
 
     if (demo_info.demo_protocol >= 4)
         thisptr->priority = bits_read_le_u8(bits);
-    if (thisptr->send_prop_type == SEND_PROP_DATATABLE || thisptr->send_prop_flags & (1 << 6)) {
+    if (thisptr->send_prop_flags & (1 << 6)) {
         thisptr->exclude_dt_name = bits_read_str(bits);
     }
     else {
-        switch (thisptr->send_prop_type)
-        {
-        case SEND_PROP_STRING:
-        case SEND_PROP_INT:
-        case SEND_PROP_FLOAT:
-        case SEND_PROP_VECTOR3:
-        case SEND_PROP_VECTOR2:
+        if (thisptr->send_prop_type == SEND_PROP_DATATABLE) {
+            thisptr->table_name = bits_read_str(bits);
+        }
+        else if (thisptr->send_prop_type == SEND_PROP_ARRAY) {
+            thisptr->num_element = bits_read_bits(10, bits);
+        }
+        else {
             thisptr->low_value = bits_read_le_f32(bits);
             thisptr->high_value = bits_read_le_f32(bits);
             thisptr->num_bits = bits_read_bits((demo_info.network_protocol <= 14) ? 6 : 7, bits);
-            break;
-        case SEND_PROP_ARRAY:
-            thisptr->num_element = bits_read_bits(10, bits);
-            break;
-        default:
-            return false;
         }
     }
     return true;
@@ -489,26 +485,20 @@ static void print_send_prop(SendProp* thisptr, FILE* fp) {
     fprintf(fp, "\t\t\tSendPropFlags: %d\n", thisptr->send_prop_flags);
     if (demo_info.demo_protocol >= 4)
         fprintf(fp, "\t\t\tPriority: %d\n", thisptr->priority);
-    if (thisptr->send_prop_type == SEND_PROP_DATATABLE || thisptr->send_prop_flags & (1 << 6)) {
+    if (thisptr->send_prop_flags & (1 << 6)) {
         fprintf(fp, "\t\t\tExcludeDtName: %s\n", thisptr->exclude_dt_name);
     }
     else {
-        switch (thisptr->send_prop_type)
-        {
-        case SEND_PROP_STRING:
-        case SEND_PROP_INT:
-        case SEND_PROP_FLOAT:
-        case SEND_PROP_VECTOR3:
-        case SEND_PROP_VECTOR2:
+        if (thisptr->send_prop_type == SEND_PROP_DATATABLE) {
+            fprintf(fp, "\t\t\tTableName: %s\n", thisptr->table_name);
+        }
+        else if (thisptr->send_prop_type == SEND_PROP_ARRAY) {
+            fprintf(fp, "\t\t\tNumElement: %d\n", thisptr->num_element);
+        }
+        else {
             fprintf(fp, "\t\t\tLowValue: %.3f\n", thisptr->low_value);
             fprintf(fp, "\t\t\tHighValue: %.3f\n", thisptr->high_value);
             fprintf(fp, "\t\t\tNumBits: %d\n", thisptr->num_bits);
-            break;
-        case SEND_PROP_ARRAY:
-            fprintf(fp, "\t\t\tNumElement: %d\n", thisptr->num_element);
-            break;
-        default:
-            return;
         }
     }
 }
@@ -574,7 +564,7 @@ DECL_PARSE_FUNC(DataTables) {
     DECL_PTR(DataTables);
     uint32_t byte_size = bits_read_le_u32(bits);
     size_t end_index = bits->current + (byte_size << 3);
-    if (demo_info.parse_level >= 2) {
+    if (demo_info.parse_level >= 3) {
         bool error = false;
         ptr->send_tables.capacity = 0;
         ptr->send_tables.size = 0;
@@ -610,24 +600,26 @@ DECL_PARSE_FUNC(DataTables) {
 }
 DECL_PRINT_FUNC(DataTables) {
     const DECL_PTR(DataTables);
-    if (demo_info.parse_level < 2) return;
-    for (size_t i = 0; i < ptr->send_tables.size; i++) {
-        fprintf(fp, "\tSendTable[%zd]\n", i);
-        print_send_table(&ptr->send_tables.data[i], fp);
-    }
-    for (size_t i = 0; i < ptr->server_class_info.size; i++) {
-        fprintf(fp, "\tServerClassInfo[%zd]\n", i);
-        print_server_class_info(&ptr->server_class_info.data[i], fp);
+    if (demo_info.parse_level >= 3) {
+        for (size_t i = 0; i < ptr->send_tables.size; i++) {
+            fprintf(fp, "\tSendTable[%zd]\n", i);
+            print_send_table(&ptr->send_tables.data[i], fp);
+        }
+        for (size_t i = 0; i < ptr->server_class_info.size; i++) {
+            fprintf(fp, "\tServerClassInfo[%zd]\n", i);
+            print_server_class_info(&ptr->server_class_info.data[i], fp);
+        }
     }
 }
 DECL_FREE_FUNC(DataTables) {
     DECL_PTR(DataTables);
-    if (demo_info.parse_level < 2) return;
-    for (size_t i = 0; i < ptr->send_tables.size; i++) {
-        free_send_table(&ptr->send_tables.data[i]);
-    }
-    for (size_t i = 0; i < ptr->server_class_info.size; i++) {
-        free_server_class_info(&ptr->server_class_info.data[i]);
+    if (demo_info.parse_level >= 3) {
+        for (size_t i = 0; i < ptr->send_tables.size; i++) {
+            free_send_table(&ptr->send_tables.data[i]);
+        }
+        for (size_t i = 0; i < ptr->server_class_info.size; i++) {
+            free_server_class_info(&ptr->server_class_info.data[i]);
+        }
     }
 }
 
@@ -688,20 +680,20 @@ DECL_FREE_FUNC(CustomData) {}
 
 // StringTables
 DECL_PARSE_FUNC(StringTables) {
-    DECL_PTR(StringTables);
+    // DECL_PTR(StringTables);
     uint32_t byte_size = bits_read_le_u32(bits);
     size_t end_index = bits->current + (byte_size << 3);
+    /*
     if (demo_info.parse_level >= 2) {
         // not implement
         ptr->size = byte_size;
         bits_skip(byte_size << 3, bits);
     }
+    */
     bits_setpos(end_index, bits);
     return true;
 }
-DECL_PRINT_FUNC(StringTables) {
-    if (demo_info.parse_level < 2) return;
-}
+DECL_PRINT_FUNC(StringTables) {}
 DECL_FREE_FUNC(StringTables) {}
 
 // Invalid
@@ -712,15 +704,10 @@ DECL_PRINT_FUNC(Invalid) {}
 DECL_FREE_FUNC(Invalid) {}
 
 // settings
-const DemoMessageSettings portal_3420_msg_settings = {
-    {MACRO_PORTAL_3420_MESSAGES(DECL_MSG_IN_NAME)},
-    {MACRO_PORTAL_3420_MESSAGES(DECL_MSG_IN_ENUM)},
-    {MACRO_PORTAL_3420_MESSAGES(DECL_MSG_IN_TABLE)}
-};
-const DemoMessageSettings portal_5135_msg_settings = {
-    {MACRO_PORTAL_5135_MESSAGES(DECL_MSG_IN_NAME)},
-    {MACRO_PORTAL_5135_MESSAGES(DECL_MSG_IN_ENUM)},
-    {MACRO_PORTAL_5135_MESSAGES(DECL_MSG_IN_TABLE)}
+const DemoMessageSettings oe_msg_settings = {
+    {MACRO_OE_MESSAGES(DECL_MSG_IN_NAME)},
+    {MACRO_OE_MESSAGES(DECL_MSG_IN_ENUM)},
+    {MACRO_OE_MESSAGES(DECL_MSG_IN_TABLE)}
 };
 const DemoMessageSettings ne_msg_settings = {
     {MACRO_NE_MESSAGES(DECL_MSG_IN_NAME)},

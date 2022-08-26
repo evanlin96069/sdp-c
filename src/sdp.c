@@ -116,7 +116,7 @@ int main(int argc, char* argv[]) {
         return 1;
     }
     if (demo->game == GAME_UNKNOWN) {
-        warning("Failed to detect game type. Demo might not parsed correctly");
+        warning("Failed to detect game type. Demo might not parsed correctly.\n");
     }
     else {
         info("Game: %s\n", game_names[demo->game]);

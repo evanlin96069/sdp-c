@@ -8,8 +8,10 @@
 #include "print.h"
 
 const char* game_names[GAME_COUNT] = {
+    "Half-Life 2 Old Engine (2153)",
+    "Half-Life 2 Old Engine (2187)",
     "Dark Messiah of Might & Magic",
-    "Half-Life 2 Old Engine",
+    "Half-Life 2 Old Engine (4044)",
     "Portal (3258)",
     "Portal (3420)",
     "Source Unpack (5135)",
@@ -81,6 +83,24 @@ int demo_parse(Demo* demo, int parse_level, bool debug_mode) {
     demo_info.msg_settings = NULL;
     demo_info.net_msg_settings = NULL;
 
+
+    /*
+
+    |  Build   | Demo protocol | Netwrok protocol |
+    |   2153   |       2       |        5         |
+    |   2187   |       2       |        6         |
+    |   DMoMM  |       2       |        7         |
+    |   4044   |       3       |        7         |
+    |   3258   |       3       |        11        |
+    |   3943   |       3       |        14        |
+    |   3420   |       3       |        14        |
+    |   4295   |       3       |        15        |
+    |   5135   |       3       |        15        |
+    |  1910503 |       3       |        24        |
+    |  7197370 |       3       |        24        |
+    | Portal 2 |       4       |       2001       |
+
+    */
     // TODO: needs improvement
     int supported_parse_level = 0;
     demo_info.game = GAME_UNKNOWN;
@@ -89,57 +109,67 @@ int demo_parse(Demo* demo, int parse_level, bool debug_mode) {
     demo_info.MSSC = 1;
     switch (demo_info.demo_protocol) {
     case 2:
-        if (demo_info.network_protocol == 7) {
+        switch (demo_info.network_protocol)
+        {
+        case 5:
+            demo_info.game = HL2_OE_2153;
+            supported_parse_level = 2;
+            demo->tick_interval = 0.015f;
+            break;
+        case 6:
+            demo_info.game = HL2_OE_2187;
+            supported_parse_level = 2;
+            demo->tick_interval = 0.015f;
+            break;
+        case 7:
             demo_info.game = DMOMM;
             supported_parse_level = 1;
             demo->tick_interval = 0.015f;
+            break;
+        default:
+            break;
         }
-        demo_info.msg_settings = &portal_3420_msg_settings;
+        demo_info.msg_settings = &oe_msg_settings;
         demo_info.net_msg_settings = &oe_net_msg_settings;
         break;
     case 3:
-        demo_info.net_msg_settings = &oe_net_msg_settings;
         switch (demo_info.network_protocol)
         {
         case 7:
-            demo_info.game = HL2_OE;
-            supported_parse_level = 2;
+            demo_info.game = HL2_OE_4044;
+            supported_parse_level = 3;
             demo->tick_interval = 0.015f;
-            demo_info.msg_settings = &portal_3420_msg_settings;
             break;
         case 11:
             demo_info.game = PORTAL_3258;
-            supported_parse_level = 2;
+            supported_parse_level = 3;
             demo->tick_interval = 0.015f;
-            demo_info.msg_settings = &portal_3420_msg_settings;
             break;
         case 14:
             demo_info.game = PORTAL_3420;
-            supported_parse_level = 2;
+            supported_parse_level = 3;
             demo->tick_interval = 0.015f;
-            demo_info.msg_settings = &portal_3420_msg_settings;
             break;
         case 15:
             demo_info.game = PORTAL_5135;
-            supported_parse_level = 2;
+            supported_parse_level = 3;
             demo->tick_interval = 0.015f;
-            demo_info.msg_settings = &portal_5135_msg_settings;
             break;
         case 24:
             demo_info.game = PORTAL_1910503;
-            supported_parse_level = 2;
+            supported_parse_level = 3;
             demo->tick_interval = 0.015f;
-            demo_info.msg_settings = &portal_5135_msg_settings;
             break;
         default:
-            demo_info.msg_settings = &portal_5135_msg_settings;
             break;
         }
+        demo_info.msg_settings = &oe_msg_settings;
+        demo_info.net_msg_settings = &oe_net_msg_settings;
         break;
     case 4:
         if (demo_info.network_protocol == 2001) {
             demo_info.game = PORTAL_2;
-            supported_parse_level = 2;
+            supported_parse_level = 3;
             // 0x3C888889
             demo->tick_interval = 0.016666667f;
             demo_info.MSSC = 2;

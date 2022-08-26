@@ -16,19 +16,7 @@ macro(Stop)                         \
 macro(CustomData)                   \
 macro(StringTables)
 
-#define MACRO_PORTAL_3420_MESSAGES(macro)   \
-macro(StringTables)                         \
-macro(SignOn)                               \
-macro(Packet)                               \
-macro(SyncTick)                             \
-macro(ConsoleCmd)                           \
-macro(UserCmd)                              \
-macro(DataTables)                           \
-macro(Stop)                                 \
-macro(Invalid)                              \
-macro(Invalid)
-
-#define MACRO_PORTAL_5135_MESSAGES(macro)   \
+#define MACRO_OE_MESSAGES(macro)   \
 macro(Invalid)                              \
 macro(SignOn)                               \
 macro(Packet)                               \
@@ -79,8 +67,7 @@ typedef struct {
     const DemoMessageTable func_table[MESSAGE_COUNT];
 } DemoMessageSettings;
 
-extern const DemoMessageSettings portal_3420_msg_settings;
-extern const DemoMessageSettings portal_5135_msg_settings;
+extern const DemoMessageSettings oe_msg_settings;
 extern const DemoMessageSettings ne_msg_settings;
 
 typedef struct {
@@ -183,6 +170,7 @@ typedef struct {
     char* send_prop_name;
     uint32_t send_prop_flags;
     uint8_t priority;
+    char* table_name;
     char* exclude_dt_name;
     float low_value;
     float high_value;

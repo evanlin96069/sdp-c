@@ -3,53 +3,33 @@
 #include "minunit.h"
 #include "../include/demo.h"
 
+#define TEST_DEMO(name, ticks, type)                                                        \
+do {                                                                                        \
+    Demo* demo = new_demo("test/resources/" name);                                          \
+    int result = demo_parse(demo, -1, false);                                               \
+    mu_assert("[FAILED] " name ": parsing not success.", result == MEASURED_SUCCESS);       \
+    mu_assert("[FAILED] " name ": wrong measured ticks.", demo->measured_ticks == ticks);   \
+    mu_assert("[FAILED] " name ": wrong game detection.", demo->game == type);              \
+    demo_free(demo);                                                                        \
+    tests_run++;                                                                            \
+} while (0)
+
 int tests_run = 0;
 
-static char* test_demo_dmomm() {
-    Demo* demo = new_demo("test/resources/DMoMM.dem");
-    int result = demo_parse(demo, -1, false);
-    mu_assert("[FAILED] DMoMM.dem: parsing not success.", result == MEASURED_SUCCESS);
-    mu_assert("[FAILED] DMoMM.dem: wrong measured ticks.", demo->measured_ticks == 876);
-    mu_assert("[FAILED] DMoMM.dem: wrong game detection.", demo->game == DMOMM);
-    demo_free(demo);
-    return 0;
-}
-
-static char* test_demo_3420() {
-    Demo* demo = new_demo("test/resources/Portal_3420.dem");
-    int result = demo_parse(demo, -1, false);
-    mu_assert("[FAILED] Portal_3420.dem: parsing not success.", result == MEASURED_SUCCESS);
-    mu_assert("[FAILED] Portal_3420.dem: wrong measured ticks.", demo->measured_ticks == 255);
-    mu_assert("[FAILED] Portal_3420.dem: wrong game detection.", demo->game == PORTAL_3420);
-    demo_free(demo);
-    return 0;
-}
-
-static char* test_demo_5135() {
-    Demo* demo = new_demo("test/resources/Portal_5135.dem");
-    int result = demo_parse(demo, -1, false);
-    mu_assert("[FAILED] Portal_5135.dem: parsing not success.", result == MEASURED_SUCCESS);
-    mu_assert("[FAILED] Portal_5135.dem: wrong measured ticks.", demo->measured_ticks == 1247);
-    mu_assert("[FAILED] Portal_5135.dem: wrong game detection.", demo->game == PORTAL_5135);
-    demo_free(demo);
-    return 0;
-}
-
-static char* test_demo_portal2() {
-    Demo* demo = new_demo("test/resources/Portal2.dem");
-    int result = demo_parse(demo, -1, false);
-    mu_assert("[FAILED] Portal2.dem: parsing not success.", result == MEASURED_SUCCESS);
-    mu_assert("[FAILED] Portal2.dem: wrong measured ticks.", demo->measured_ticks == 732);
-    mu_assert("[FAILED] Portal2.dem: wrong game detection.", demo->game == PORTAL_2);
-    demo_free(demo);
-    return 0;
-}
-
 static char* all_tests() {
-    mu_run_test(test_demo_dmomm);
-    mu_run_test(test_demo_3420);
-    mu_run_test(test_demo_5135);
-    mu_run_test(test_demo_portal2);
+    TEST_DEMO("hl2_oe_2153.dem", 2299, HL2_OE_2153);
+    TEST_DEMO("hl2_oe_2187.dem", 2232, HL2_OE_2187);
+    TEST_DEMO("DMoMM.dem", 876, DMOMM);
+    TEST_DEMO("hl2_oe_4044.dem", 2342, HL2_OE_4044);
+    TEST_DEMO("Portal_3258.dem", 852, PORTAL_3258);
+    TEST_DEMO("Portal_3420.dem", 255, PORTAL_3420);
+    TEST_DEMO("Portal_3943.dem", 875, PORTAL_3420);
+    TEST_DEMO("Portal_4295.dem", 907, PORTAL_5135);
+    TEST_DEMO("Portal_5135.dem", 1247, PORTAL_5135);
+    TEST_DEMO("hl2_5135.dem", 2133, PORTAL_5135);
+    TEST_DEMO("Portal_1910503.dem", 752, PORTAL_1910503);
+    TEST_DEMO("Portal_7197370.dem", 908, PORTAL_1910503);
+    TEST_DEMO("Portal2.dem", 732, PORTAL_2);
     return 0;
 }
 
