@@ -7,9 +7,9 @@
 do {                                                                                        \
     Demo* demo = new_demo("test/resources/" name);                                          \
     int result = demo_parse(demo, -1, false);                                               \
-    mu_assert("[FAILED] " name ": parsing not success.", result == MEASURED_SUCCESS);       \
-    mu_assert("[FAILED] " name ": wrong measured ticks.", demo->measured_ticks == ticks);   \
-    mu_assert("[FAILED] " name ": wrong game detection.", demo->game == type);              \
+    mu_assert(name ": parsing not success.", result == MEASURED_SUCCESS);                   \
+    mu_assert(name ": wrong measured ticks.", demo->measured_ticks == ticks);               \
+    mu_assert(name ": wrong game detection.", demo->game == type);                          \
     demo_free(demo);                                                                        \
     tests_run++;                                                                            \
 } while (0)
@@ -40,7 +40,7 @@ int main(void) {
         printf("%s\n", result);
     }
     else {
-        printf("[SUCCESS] All Test passed.\n");
+        printf(SUCCESS("All Test passed.\n"));
     }
     printf("Tests run: %d\n", tests_run);
 

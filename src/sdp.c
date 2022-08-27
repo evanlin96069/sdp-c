@@ -140,8 +140,10 @@ int main(int argc, char* argv[]) {
         printf("PlayBackFrames:     %d\n", header->play_back_frames);
         printf("SignOnLength:       %d\n\n", header->sign_on_length);
         if (result != NOT_MEASURED) {
+            printf(SET_FG(CYN));
             printf("Measured ticks:     %d\n", demo->measured_ticks);
             printf("Measured time:      %.3f\n", demo->measured_ticks * demo->tick_interval);
+            printf(RESET);
         }
     }
     else if (mode == DUMP_MODE) {
