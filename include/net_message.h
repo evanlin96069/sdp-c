@@ -317,8 +317,7 @@ typedef struct {
 
 typedef struct {
     bool remove_user;
-    uint32_t length;
-    uint8_t* data;
+    uint32_t slot;
 } SvcSplitScreen;
 
 typedef struct {

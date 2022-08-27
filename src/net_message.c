@@ -607,20 +607,15 @@ DECL_NET_FREE_FUNC(SvcBspDecal) {}
 DECL_NET_PARSE_FUNC(SvcSplitScreen) {
     DECL_PTR(SvcSplitScreen);
     ptr->remove_user = bits_read_one_bit(bits);
-    ptr->length = bits_read_bits(11, bits);
-    // data parsing not implemented
-    ptr->data = bits_read_bits_arr(ptr->length, bits);
+    ptr->slot = bits_read_bits(11, bits);
     return true;
 }
 DECL_NET_PRINT_FUNC(SvcSplitScreen) {
     const DECL_PTR(SvcSplitScreen);
     fprintf(fp, "\t\t\tRemoveUser: %s\n", ptr->remove_user ? "true" : "false");
-    fprintf(fp, "\t\t\tLength: %d\n", ptr->length);
+    fprintf(fp, "\t\t\tSlot: %d\n", ptr->slot);
 }
-DECL_NET_FREE_FUNC(SvcSplitScreen) {
-    DECL_PTR(SvcSplitScreen);
-    free(ptr->data);
-}
+DECL_NET_FREE_FUNC(SvcSplitScreen) {}
 
 // SvcUserMessage
 DECL_NET_PARSE_FUNC(SvcUserMessage) {
