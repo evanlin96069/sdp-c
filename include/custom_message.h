@@ -4,9 +4,16 @@
 #include <stdint.h>
 
 typedef struct {
+    uint32_t demo;
+    uint32_t sar_dll;
+} SourceAutoRecordChecksum;
+
+typedef struct {
     uint8_t id;
-    uint32_t demo_checksum;
-    uint32_t sar_checksum;
+    union {
+        SourceAutoRecordChecksum checksum;
+        uint64_t signature;
+    } data;
 } SourceAutoRecordMessage;
 
 typedef struct {

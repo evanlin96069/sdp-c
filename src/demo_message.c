@@ -46,11 +46,12 @@ DECL_PARSE_FUNC(Packet) {
         uint32_t count = 0;
         ptr->data.capacity = 0;
         ptr->data.size = 0;
-        while (end_index - bits->current > 6) {
+        uint32_t net_msg_type_bits = (demo_info.network_protocol <= 14) ? 5 : 6;
+        while (end_index - bits->current >= net_msg_type_bits) {
             count++;
             NetSvcMessage msg = { 0 };
             // parse net message
-            NetSvcMessageType type = msg.type = bits_read_bits((demo_info.network_protocol <= 14) ? 5 : 6, bits);
+            NetSvcMessageType type = msg.type = bits_read_bits(net_msg_type_bits, bits);
             if (type < NET_MSG_COUNT) {
                 const char* name = demo_info.net_msg_settings->names[type];
                 debug("Parsing NET/SVC message %s (%d) at %d.\n", name, type, count);
@@ -646,11 +647,19 @@ DECL_PARSE_FUNC(CustomData) {
         msg->cursor_x = bits_read_le_u32(bits);
         msg->cursor_y = bits_read_le_u32(bits);
 
-        msg->has_sar_message = (byte_size == 17);
+        msg->has_sar_message = (end_index - bits->current >= 8);
         if (msg->has_sar_message) {
             msg->sar_message.id = bits_read_le_u8(bits);
-            msg->sar_message.demo_checksum = bits_read_le_u32(bits);
-            msg->sar_message.sar_checksum = bits_read_le_u32(bits);
+            if (msg->sar_message.id == 0xFF) {
+                // v1
+                msg->sar_message.data.checksum.demo = bits_read_le_u32(bits);
+                msg->sar_message.data.checksum.sar_dll = bits_read_le_u32(bits);
+            }
+            else if (msg->sar_message.id == 0xFE) {
+                // v2
+                msg->sar_message.data.signature = ((uint64_t)bits_read_le_u32(bits) << 32) | bits_read_le_u32(bits);
+            }
+
         }
     }
     bits_setpos(end_index, bits);
@@ -666,9 +675,13 @@ DECL_PRINT_FUNC(CustomData) {
 
         if (msg->has_sar_message) {
             fprintf(fp, "\t\tSourceAutoRecordMessage:\n");
-            fprintf(fp, "\t\t\tId: %d\n", msg->sar_message.id);
-            fprintf(fp, "\t\t\tDemoChecksum: %X\n", msg->sar_message.demo_checksum);
-            fprintf(fp, "\t\t\tSAR_Checksum: %X\n", msg->sar_message.sar_checksum);
+            if (msg->sar_message.id == 0xFF) {
+                fprintf(fp, "\t\t\tDemoChecksum: %X\n", msg->sar_message.data.checksum.demo);
+                fprintf(fp, "\t\t\tSAR_Checksum: %X\n", msg->sar_message.data.checksum.sar_dll);
+            }
+            else if (msg->sar_message.id == 0xFE) {
+                fprintf(fp, "\t\t\tSignature: %lX\n", msg->sar_message.data.signature);
+            }
         }
     }
     else {
