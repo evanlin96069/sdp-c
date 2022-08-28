@@ -145,6 +145,7 @@ int main(int argc, char* argv[]) {
             printf("Measured time:      %.3f\n", demo->measured_ticks * demo->tick_interval);
             printf(RESET);
         }
+        getchar();
     }
     else if (mode == DUMP_MODE) {
         info("Dumping verbose output...\n");
