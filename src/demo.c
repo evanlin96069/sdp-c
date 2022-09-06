@@ -14,6 +14,7 @@ const char* game_names[GAME_COUNT] = {
     "Half-Life 2 Old Engine (4044)",
     "Portal (3258)",
     "Portal (3420)",
+    "Portal (3740)",
     "Source Unpack (5135)",
     "Steampipe HL2/Portal",
     "Portal 2",
@@ -92,8 +93,9 @@ int demo_parse(Demo* demo, int parse_level, bool debug_mode) {
     |   DMoMM  |       2       |        7         |
     |   4044   |       3       |        7         |
     |   3258   |       3       |        11        |
-    |   3943   |       3       |        14        |
     |   3420   |       3       |        14        |
+    |   3740   |       3       |        14        |
+    |   3943   |       3       |        14        |
     |   4295   |       3       |        15        |
     |   5135   |       3       |        15        |
     |  1910503 |       3       |        24        |
@@ -151,12 +153,12 @@ int demo_parse(Demo* demo, int parse_level, bool debug_mode) {
             demo->tick_interval = 0.015f;
             break;
         case 15:
-            demo_info.game = PORTAL_5135;
+            demo_info.game = SOURCE_UNPACK;
             supported_parse_level = 3;
             demo->tick_interval = 0.015f;
             break;
         case 24:
-            demo_info.game = PORTAL_1910503;
+            demo_info.game = STEAMPIPE;
             supported_parse_level = 3;
             demo->tick_interval = 0.015f;
             break;
@@ -208,6 +210,12 @@ int demo_parse(Demo* demo, int parse_level, bool debug_mode) {
         count++;
         DemoMessage msg = { 0 };
         type = msg.type = bits_read_le_u8(bits);
+        // Portal 3740 demos have StringTables messages.
+        if (demo_info.game == PORTAL_3420 && type == 8) {
+            demo_info.game = PORTAL_3740;
+            demo->game = demo_info.game;
+        }
+
         // Last byte is cut off in demos, use the previous byte
         int tick;
         if (bits->bit_size - bits->current >= 32) {
