@@ -4,8 +4,9 @@
 #include "demo.h"
 #include "demo_info.h"
 #include "bits.h"
-#include "alloc.h"
-#include "print.h"
+#include "utils/alloc.h"
+#include "utils/print.h"
+#include "utils/indent_writer.h"
 
 const char* game_names[GAME_COUNT] = {
     "Half-Life 2 Old Engine (2153)",
@@ -49,20 +50,20 @@ static void parse_header(Demo* demo, BitStream* bits) {
     demo->header.sign_on_length = bits_read_le_u32(bits);
 }
 
-static void print_header(const Demo* demo, FILE* fp) {
+static void print_header(const Demo* demo) {
     const DemoHeader* header = &demo->header;
-    fprintf(fp, "[Header]\n");
-    fprintf(fp, "DemoFileStamp: %s\n", header->demo_file_stamp);
-    fprintf(fp, "DemoProtocol: %d\n", header->demo_protocol);
-    fprintf(fp, "NetworkProtocol: %d\n", header->network_protocol);
-    fprintf(fp, "ServerName: %s\n", header->server_name);
-    fprintf(fp, "ClientName: %s\n", header->client_name);
-    fprintf(fp, "MapName: %s\n", header->map_name);
-    fprintf(fp, "GameDirectory: %s\n", header->game_dir);
-    fprintf(fp, "PlayBackTime: %.3f\n", header->play_back_time);
-    fprintf(fp, "PlayBackTicks: %d\n", header->play_back_ticks);
-    fprintf(fp, "PlayBackFrames: %d\n", header->play_back_frames);
-    fprintf(fp, "SignOnLength: %d\n", header->sign_on_length);
+    write_line("[Header]\n");
+    write_string("DemoFileStamp", header->demo_file_stamp);
+    write_int("DemoProtocol", header->demo_protocol);
+    write_int("NetworkProtocol", header->network_protocol);
+    write_string("ServerName", header->server_name);
+    write_string("ClientName", header->client_name);
+    write_string("MapName", header->map_name);
+    write_string("GameDirectory", header->game_dir);
+    write_float("PlayBackTime", header->play_back_time);
+    write_int("PlayBackTicks", header->play_back_ticks);
+    write_int("PlayBackFrames", header->play_back_frames);
+    write_int("SignOnLength", header->sign_on_length);
 }
 
 int demo_parse(Demo* demo, int parse_level, bool debug_mode) {
@@ -268,21 +269,26 @@ int demo_parse(Demo* demo, int parse_level, bool debug_mode) {
 void demo_verbose(const Demo* demo, FILE* fp) {
     if (!demo) return;
 
-    fprintf(fp, "FileName: %s\n\n", demo->file_name);
+    g_writer.fp = fp;
 
-    print_header(demo, fp);
-    fprintf(fp, "\n");
+    write_string("FileName", demo->file_name);
+    write_nl();
+
+    print_header(demo);
+    write_nl();
 
     for (size_t i = 0; i < demo->messages.size; i++) {
         const DemoMessage* msg = &demo->messages.data[i];
         DemoMessageType type = msg->type;
         const char* name = demo_info.msg_settings->names[type];
-        fprintf(fp, "[%d] %s (%d)\n", msg->tick, name, type);
+        write_line("[%d] %s (%d)\n", msg->tick, name, type);
+        g_writer.indent++;
         if (demo_info.MSSC > 1) {
-            fprintf(fp, "\tSlot: %d\n", msg->slot);
+            write_int("Slot", msg->slot);
         }
-        demo_info.msg_settings->func_table[type].print(&msg->data, fp);
-        fprintf(fp, "\n");
+        demo_info.msg_settings->func_table[type].print(&msg->data);
+        g_writer.indent--;
+        write_nl();
     }
 }
 

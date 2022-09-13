@@ -52,7 +52,7 @@ typedef struct _DemoMessage DemoMessage;
 typedef union _DemoMessageData DemoMessageData;
 
 typedef bool (*ParseMessageFunc)(DemoMessageData* thisptr, BitStream* bits);
-typedef void (*PrintMessageFunc)(const DemoMessageData* thisptr, FILE* fp);
+typedef void (*PrintMessageFunc)(const DemoMessageData* thisptr);
 typedef void (*FreeMessageFunc)(DemoMessageData* thisptr);
 
 typedef struct {

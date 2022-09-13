@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "demo.h"
-#include "print.h"
+#include "utils/print.h"
 
 #define help(arg_name, help_info) printf("  %-24s %s\n", arg_name, help_info)
 

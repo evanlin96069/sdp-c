@@ -1,15 +1,16 @@
 #include "demo_message.h"
 #include "demo_info.h"
-#include "alloc.h"
-#include "print.h"
+#include "utils/alloc.h"
+#include "utils/print.h"
+#include "utils/indent_writer.h"
 
 #define DECL_PARSE_FUNC(type) static bool PARSE_FUNC_NAME(type)(DemoMessageData* thisptr, BitStream* bits)
-#define DECL_PRINT_FUNC(type) static void PRINT_FUNC_NAME(type)(const DemoMessageData* thisptr, FILE* fp)
+#define DECL_PRINT_FUNC(type) static void PRINT_FUNC_NAME(type)(const DemoMessageData* thisptr)
 #define DECL_FREE_FUNC(type) static void FREE_FUNC_NAME(type)(DemoMessageData* thisptr)
 
 // Packet
 
-static void parse_cmd_info(CmdInfo* info, BitStream* bits) {
+static inline void parse_cmd_info(CmdInfo* info, BitStream* bits) {
     info->flags = bits_read_le_u32(bits);
     info->view_origin[0] = bits_read_le_f32(bits);
     info->view_origin[1] = bits_read_le_f32(bits);
@@ -80,33 +81,33 @@ DECL_PARSE_FUNC(Packet) {
     return true;
 }
 
-static void print_cmd_info(const CmdInfo* info, FILE* fp) {
-    fprintf(fp, "\t\tFlags: %d\n", info->flags);
-    fprintf(fp, "\t\tViewOrigin: (%.3f, %.3f, %.3f)\n", info->view_origin[0], info->view_origin[1], info->view_origin[2]);
-    fprintf(fp, "\t\tViewAngles: (%.3f, %.3f, %.3f)\n", info->view_angles[0], info->view_angles[1], info->view_angles[2]);
-    fprintf(fp, "\t\tLocalViewAngles: (%.3f, %.3f, %.3f)\n", info->local_view_angles[0], info->local_view_angles[1], info->local_view_angles[2]);
-    fprintf(fp, "\t\tViewOrigin2: (%.3f, %.3f, %.3f)\n", info->view_origin2[0], info->view_origin2[1], info->view_origin2[2]);
-    fprintf(fp, "\t\tViewAngles2: (%.3f, %.3f, %.3f)\n", info->view_angles2[0], info->view_angles2[1], info->view_angles2[2]);
-    fprintf(fp, "\t\tLocalViewAngles2: (%.3f, %.3f, %.3f)\n", info->local_view_angles2[0], info->local_view_angles2[1], info->local_view_angles2[2]);
-}
-
 DECL_PRINT_FUNC(Packet) {
     const DECL_PTR(Packet);
     for (int i = 0; i < demo_info.MSSC; i++) {
-        fprintf(fp, "\tPacketInfo[%d]:\n", i);
-        print_cmd_info(&ptr->packet_info[i], fp);
+        write_line("PacketInfo[%d]:\n", i);
+        g_writer.indent++;
+        write_int("Flags", ptr->packet_info[i].flags);
+        write_vec3("ViewOrigin", ptr->packet_info[i].view_origin);
+        write_vec3("ViewAngles", ptr->packet_info[i].view_angles);
+        write_vec3("LocalViewAngles", ptr->packet_info[i].local_view_angles);
+        write_vec3("ViewOrigin2", ptr->packet_info[i].view_origin2);
+        write_vec3("ViewAngles2", ptr->packet_info[i].view_angles2);
+        write_vec3("LocalViewAngles2", ptr->packet_info[i].local_view_angles2);
+        g_writer.indent--;
     }
-    fprintf(fp, "\tInSequence: %d\n", ptr->in_sequence);
-    fprintf(fp, "\tOutSequence: %d\n", ptr->out_sequence);
+    write_int("InSequence", ptr->in_sequence);
+    write_int("OutSequence", ptr->out_sequence);
 
     if (demo_info.parse_level >= 2) {
-        fprintf(fp, "\tNET/SVC-Messages:\n");
+        write_line("NET/SVC-Messages:");
         for (size_t i = 0; i < ptr->data.size; i++) {
             NetSvcMessage* msg = &ptr->data.data[i];
             NetSvcMessageType type = msg->type;
             const char* name = demo_info.net_msg_settings->names[type];
-            fprintf(fp, "\t\t%s (%d)\n", name, type);
-            demo_info.net_msg_settings->func_table[type].print(&msg->data, fp);
+            write_line("%s (%d)\n", name, type);
+            g_writer.indent++;
+            demo_info.net_msg_settings->func_table[type].print(&msg->data);
+            g_writer.indent--;
         }
     }
 }
@@ -125,7 +126,7 @@ DECL_PARSE_FUNC(SignOn) {
     return parse_Packet(thisptr, bits);
 }
 DECL_PRINT_FUNC(SignOn) {
-    print_Packet(thisptr, fp);
+    print_Packet(thisptr);
 }
 DECL_FREE_FUNC(SignOn) {
     free_Packet(thisptr);
@@ -148,7 +149,7 @@ DECL_PARSE_FUNC(ConsoleCmd) {
 }
 DECL_PRINT_FUNC(ConsoleCmd) {
     const DECL_PTR(ConsoleCmd);
-    fprintf(fp, "\tData: %s\n", (char*)ptr->data);
+    write_string("Data", (char*)ptr->data);
 }
 DECL_FREE_FUNC(ConsoleCmd) {
     DECL_PTR(ConsoleCmd);
@@ -309,103 +310,103 @@ DECL_PRINT_FUNC(UserCmd) {
     const DECL_PTR(UserCmd);
     const UserCmdInfo* cmd = &ptr->data;
     if (cmd->has_command_number)
-        fprintf(fp, "\tCommandNumber: %d\n", cmd->command_number);
+        write_int("CommandNumber", cmd->command_number);
     if (cmd->has_tick_count)
-        fprintf(fp, "\tTickCount: %d\n", cmd->tick_count);
+        write_int("TickCount", cmd->tick_count);
     if (cmd->has_view_angles_x)
-        fprintf(fp, "\tViewAnglesX: %.3f\n", cmd->view_angles_x);
+        write_float("ViewAnglesX", cmd->view_angles_x);
     if (cmd->has_view_angles_y)
-        fprintf(fp, "\tViewAnglesY: %.3f\n", cmd->view_angles_y);
+        write_float("ViewAnglesY", cmd->view_angles_y);
     if (cmd->has_view_angles_z)
-        fprintf(fp, "\tViewAnglesZ: %.3f\n", cmd->view_angles_z);
+        write_float("ViewAnglesZ", cmd->view_angles_z);
     if (cmd->has_forward_move)
-        fprintf(fp, "\tForwardMove: %.3f\n", cmd->forward_move);
+        write_float("ForwardMove", cmd->forward_move);
     if (cmd->has_side_move)
-        fprintf(fp, "\tSideMove: %.3f\n", cmd->side_move);
+        write_float("SideMove", cmd->side_move);
     if (cmd->has_up_move)
-        fprintf(fp, "\tUpMove: %.3f\n", cmd->up_move);
+        write_float("UpMove", cmd->up_move);
     if (cmd->has_buttons)
-        fprintf(fp, "\tButtons: %d\n", cmd->buttons);
+        write_int("Buttons", cmd->buttons);
     if (cmd->has_impulse)
-        fprintf(fp, "\tImpulse: %d\n", cmd->impulse);
+        write_int("Impulse", cmd->impulse);
 
     if (cmd->has_weapon_select) {
-        fprintf(fp, "\tWeaponSelect: %d\n", cmd->weapon_select);
+        write_int("WeaponSelect", cmd->weapon_select);
         if (cmd->has_weapon_subtype)
-            fprintf(fp, "\tWeaponSubtype: %d\n", cmd->weapon_subtype);
+            write_int("WeaponSubtype", cmd->weapon_subtype);
         if (demo_info.game == DMOMM)
-            fprintf(fp, "\tUnknownWeaponFlags: %d\n", cmd->mm_unknown_weapon_flags);
+            write_int("UnknownWeaponFlags", cmd->mm_unknown_weapon_flags);
     }
 
     if (demo_info.game == DMOMM) {
         if (cmd->has_unknown_b_1) {
-            fprintf(fp, "\tUnknown_b_1: %s\n", cmd->unknown_b_1 ? "true" : "false");
-            fprintf(fp, "\tUnknown_b_2: %s\n", cmd->unknown_b_2 ? "true" : "false");
+            write_bool("Unknown_b_1", cmd->unknown_b_1);
+            write_bool("Unknown_b_2", cmd->unknown_b_2);
         }
         if (cmd->has_unknown_u11)
-            fprintf(fp, "\tUnknown_u11: %d\n", cmd->unknown_u11);
+            write_int("Unknown_u11", cmd->unknown_u11);
         if (cmd->has_mm_move_item_from_slot)
-            fprintf(fp, "\tMoveItemFromSlot: %d\n", cmd->mm_move_item_from_slot);
+            write_int("MoveItemFromSlot", cmd->mm_move_item_from_slot);
         if (cmd->has_mm_move_item_to_slot)
-            fprintf(fp, "\ttMoveItemToSlot: %d\n", cmd->mm_move_item_to_slot);
+            write_int("MoveItemToSlot", cmd->mm_move_item_to_slot);
         if (cmd->has_mm_stealth)
-            fprintf(fp, "\tStealth: %.3f\n", cmd->mm_stealth);
+            write_float("Stealth", cmd->mm_stealth);
         if (cmd->has_mm_use_item_id) {
-            fprintf(fp, "\tUseItemId: %d\n", cmd->mm_use_item_id);
-            fprintf(fp, "\tUnknownItemFlag: %s\n", cmd->mm_unknown_item_flag ? "true" : "false");
+            write_int("UseItemId", cmd->mm_use_item_id);
+            write_bool("UnknownItemFlag", cmd->mm_unknown_item_flag);
         }
         if (cmd->has_unknown_i6)
-            fprintf(fp, "\tUnknown_i6: %d\n", cmd->unknown_i6);
+            write_int("Unknown_i6", cmd->unknown_i6);
         if (cmd->has_mm_upgrade_skill_type)
-            fprintf(fp, "\tUpgradeSkillType: %d\n", cmd->mm_upgrade_skill_type);
+            write_int("UpgradeSkillType", cmd->mm_upgrade_skill_type);
 
         if (cmd->has_mouse_dx)
-            fprintf(fp, "\tMouseDx: %d\n", cmd->mouse_dx);
+            write_int("MouseDx", cmd->mouse_dx);
         if (cmd->has_mouse_dy)
-            fprintf(fp, "\tMouseDy: %d\n", cmd->mouse_dy);
+            write_int("MouseDy", cmd->mouse_dy);
 
         // ???
         if (cmd->has_unknown_i16)
-            fprintf(fp, "\tUnknown_i16: %d\n", cmd->unknown_i16);
+            write_int("Unknown_i16", cmd->unknown_i16);
 
         if (cmd->has_mm_lean_move)
-            fprintf(fp, "\tLeanMove: %.3f\n", cmd->mm_lean_move);
+            write_float("LeanMove", cmd->mm_lean_move);
 
         if (cmd->has_mm_sprint)
-            fprintf(fp, "\tSprint: %s\n", cmd->mm_sprint ? "true" : "false");
+            write_bool("Sprint", cmd->mm_sprint);
         if (cmd->has_mm_unknown_action_2)
-            fprintf(fp, "\tUnknownAction_2: %s\n", cmd->mm_unknown_action_2 ? "true" : "false");
+            write_bool("UnknownAction_2", cmd->mm_unknown_action_2);
         if (cmd->has_mm_kick)
-            fprintf(fp, "\tKick: %s\n", cmd->mm_kick ? "true" : "false");
+            write_bool("Kick", cmd->mm_kick);
         if (cmd->has_mm_unknown_action_4)
-            fprintf(fp, "\tUnknownAction_4: %s\n", cmd->mm_unknown_action_4 ? "true" : "false");
+            write_bool("UnknownAction_4", cmd->mm_unknown_action_4);
         if (cmd->has_mm_unknown_action_5)
-            fprintf(fp, "\tUnknownAction_5: %s\n", cmd->mm_unknown_action_5 ? "true" : "false");
+            write_bool("UnknownAction_5", cmd->mm_unknown_action_5);
         if (cmd->has_mm_shwo_charsheet)
-            fprintf(fp, "\tShowCharsheet: %s\n", cmd->mm_shwo_charsheet ? "true" : "false");
+            write_bool("ShowCharsheet", cmd->mm_shwo_charsheet);
         if (cmd->has_mm_unknown_action_7)
-            fprintf(fp, "\tUnknownAction_7: %s\n", cmd->mm_unknown_action_7 ? "true" : "false");
+            write_bool("UnknownAction_7", cmd->mm_unknown_action_7);
         if (cmd->has_mm_show_inventory_belt)
-            fprintf(fp, "\tShowInventoryBelt: %s\n", cmd->mm_show_inventory_belt ? "true" : "false");
+            write_bool("ShowInventoryBelt", cmd->mm_show_inventory_belt);
         if (cmd->has_mm_show_inventory_belt_select)
-            fprintf(fp, "\tShowInventoryBeltSelect: %s\n", cmd->mm_show_inventory_belt_select ? "true" : "false");
+            write_bool("ShowInventoryBeltSelect", cmd->mm_show_inventory_belt_select);
         if (cmd->has_mm_hide_inventory_belt_select)
-            fprintf(fp, "\tHideInventoryBeltSelect: %s\n", cmd->mm_hide_inventory_belt_select ? "true" : "false");
+            write_bool("HideInventoryBeltSelect", cmd->mm_hide_inventory_belt_select);
         if (cmd->has_mm_show_objectives)
-            fprintf(fp, "\tShowObjectives: %s\n", cmd->mm_show_objectives ? "true" : "false");
+            write_bool("ShowObjectives", cmd->mm_show_objectives);
         if (cmd->has_mm_hide_objectives)
-            fprintf(fp, "\tHideObjectives: %s\n", cmd->mm_hide_objectives ? "true" : "false");
+            write_bool("HideObjectives", cmd->mm_hide_objectives);
 
         if (cmd->has_mm_exit_book_id)
-            fprintf(fp, "\tExitBookId: %d\n", cmd->mm_exit_book_id);
+            write_int("ExitBookId", cmd->mm_exit_book_id);
         if (cmd->has_mm_xana)
-            fprintf(fp, "\tXana: %s\n", cmd->mm_xana ? "true" : "false");
+            write_bool("Xana", cmd->mm_xana);
     }
     else {
         if (cmd->has_mouse_dx)
-            fprintf(fp, "\tMouseDx: %d\n", cmd->mouse_dx);
+            write_int("MouseDx", cmd->mouse_dx);
         if (cmd->has_mouse_dy)
-            fprintf(fp, "\tMouseDy: %d\n", cmd->mouse_dy);
+            write_int("MouseDy", cmd->mouse_dy);
     }
 }
 DECL_FREE_FUNC(UserCmd) {}
@@ -480,26 +481,26 @@ static bool parse_send_prop(SendProp* thisptr, BitStream* bits) {
     }
     return true;
 }
-static void print_send_prop(SendProp* thisptr, FILE* fp) {
-    fprintf(fp, "\t\t\tSendPropType: %d\n", thisptr->send_prop_type);
-    fprintf(fp, "\t\t\tSendPropName: %s\n", thisptr->send_prop_name);
-    fprintf(fp, "\t\t\tSendPropFlags: %d\n", thisptr->send_prop_flags);
+static void print_send_prop(SendProp* thisptr) {
+    write_int("SendPropType", thisptr->send_prop_type);
+    write_string("SendPropName", thisptr->send_prop_name);
+    write_int("SendPropFlags", thisptr->send_prop_flags);
     if (demo_info.demo_protocol >= 4)
-        fprintf(fp, "\t\t\tPriority: %d\n", thisptr->priority);
+        write_int("Priority: %d\n", thisptr->priority);
     if (thisptr->send_prop_flags & (1 << 6)) {
-        fprintf(fp, "\t\t\tExcludeDtName: %s\n", thisptr->exclude_dt_name);
+        write_string("ExcludeDtName", thisptr->exclude_dt_name);
     }
     else {
         if (thisptr->send_prop_type == SEND_PROP_DATATABLE) {
-            fprintf(fp, "\t\t\tTableName: %s\n", thisptr->table_name);
+            write_string("TableName", thisptr->table_name);
         }
         else if (thisptr->send_prop_type == SEND_PROP_ARRAY) {
-            fprintf(fp, "\t\t\tNumElement: %d\n", thisptr->num_element);
+            write_int("NumElement", thisptr->num_element);
         }
         else {
-            fprintf(fp, "\t\t\tLowValue: %.3f\n", thisptr->low_value);
-            fprintf(fp, "\t\t\tHighValue: %.3f\n", thisptr->high_value);
-            fprintf(fp, "\t\t\tNumBits: %d\n", thisptr->num_bits);
+            write_float("LowValue", thisptr->low_value);
+            write_float("HighValue", thisptr->high_value);
+            write_int("NumBits", thisptr->num_bits);
         }
     }
 }
@@ -525,13 +526,15 @@ static bool parse_send_table(SendTable* thisptr, BitStream* bits) {
     return true;
 }
 
-static void print_send_table(const SendTable* thisptr, FILE* fp) {
-    fprintf(fp, "\t\tNeedsDecoder: %s\n", thisptr->needs_decoder ? "true" : "false");
-    fprintf(fp, "\t\tNetTableName: %s\n", thisptr->net_table_name);
-    fprintf(fp, "\t\tNumOfProps: %d\n", thisptr->num_of_props);
+static void print_send_table(const SendTable* thisptr) {
+    write_bool("NeedsDecoder", thisptr->needs_decoder);
+    write_string("NetTableName", thisptr->net_table_name);
+    write_int("NumOfProps", thisptr->num_of_props);
     for (size_t i = 0; i < thisptr->send_props.size; i++) {
-        fprintf(fp, "\t\tSendProp[%zd]\n", i);
-        print_send_prop(&thisptr->send_props.data[i], fp);
+        write_line("SendProp[%zd]\n", i);
+        g_writer.indent++;
+        print_send_prop(&thisptr->send_props.data[i]);
+        g_writer.indent--;
     }
 }
 
@@ -549,11 +552,11 @@ static void parse_server_class_info(ServerClassInfo* thisptr, BitStream* bits) {
     thisptr->data_table_name = bits_read_str(bits);
 }
 
-static void print_server_class_info(const ServerClassInfo* thisptr, FILE* fp) {
-    fprintf(fp, "\t\t\tNumOfClasses: %d\n", thisptr->num_of_classes);
-    fprintf(fp, "\t\t\tClassId: %d\n", thisptr->class_id);
-    fprintf(fp, "\t\t\tClassName: %s\n", thisptr->class_name);
-    fprintf(fp, "\t\t\tDataTableName: %s\n", thisptr->data_table_name);
+static void print_server_class_info(const ServerClassInfo* thisptr) {
+    write_int("NumOfClasses", thisptr->num_of_classes);
+    write_int("ClassId", thisptr->class_id);
+    write_string("ClassName", thisptr->class_name);
+    write_string("DataTableName", thisptr->data_table_name);
 }
 
 static void free_server_class_info(ServerClassInfo* thisptr) {
@@ -603,12 +606,16 @@ DECL_PRINT_FUNC(DataTables) {
     const DECL_PTR(DataTables);
     if (demo_info.parse_level >= 3) {
         for (size_t i = 0; i < ptr->send_tables.size; i++) {
-            fprintf(fp, "\tSendTable[%zd]\n", i);
-            print_send_table(&ptr->send_tables.data[i], fp);
+            write_line("SendTable[%zd]\n", i);
+            g_writer.indent++;
+            print_send_table(&ptr->send_tables.data[i]);
+            g_writer.indent--;
         }
         for (size_t i = 0; i < ptr->server_class_info.size; i++) {
-            fprintf(fp, "\tServerClassInfo[%zd]\n", i);
-            print_server_class_info(&ptr->server_class_info.data[i], fp);
+            write_line("ServerClassInfo[%zd]\n", i);
+            g_writer.indent++;
+            print_server_class_info(&ptr->server_class_info.data[i]);
+            g_writer.indent--;
         }
     }
 }
@@ -632,7 +639,7 @@ DECL_PARSE_FUNC(Stop) {
 }
 DECL_PRINT_FUNC(Stop) {
     const DECL_PTR(Stop);
-    fprintf(fp, "\t\tRemainingBytes: %zd\n", ptr->remaining_bytes);
+    write_size("RemainingBytes", ptr->remaining_bytes);
 }
 DECL_FREE_FUNC(Stop) {}
 
@@ -668,25 +675,31 @@ DECL_PARSE_FUNC(CustomData) {
 DECL_PRINT_FUNC(CustomData) {
     const DECL_PTR(CustomData);
     if (ptr->type == 0) {
-        fprintf(fp, "\tRadialMouseMenuCallback (0)\n");
+        write_line("RadialMouseMenuCallback (0)\n");
         const RadialMouseMenuCallback* msg = &ptr->data.RadialMouseMenuCallback_message;
-        fprintf(fp, "\t\tCursorX: %d\n", msg->cursor_x);
-        fprintf(fp, "\t\tCursorY: %d\n", msg->cursor_y);
+        g_writer.indent++;
+        write_int("CursorX", msg->cursor_x);
+        write_int("CursorY", msg->cursor_y);
 
         if (msg->has_sar_message) {
-            fprintf(fp, "\t\tSourceAutoRecordMessage:\n");
+            write_line("SourceAutoRecordMessage:\n");
+            g_writer.indent++;
             if (msg->sar_message.id == 0xFF) {
-                fprintf(fp, "\t\t\tDemoChecksum: %X\n", msg->sar_message.data.checksum.demo);
-                fprintf(fp, "\t\t\tSAR_Checksum: %X\n", msg->sar_message.data.checksum.sar_dll);
+                write_line("DemoChecksum: %X\n", msg->sar_message.data.checksum.demo);
+                write_line("SAR_Checksum: %X\n", msg->sar_message.data.checksum.sar_dll);
             }
             else if (msg->sar_message.id == 0xFE) {
-                fprintf(fp, "\t\t\tSignature: %lX\n", msg->sar_message.data.signature);
+                write_line("Signature: %lX\n", msg->sar_message.data.signature);
             }
+            g_writer.indent--;
         }
+        g_writer.indent--;
     }
     else {
-        fprintf(fp, "\tUnknownMessage (%d)\n", ptr->type);
-        fprintf(fp, "\t\tSize: %d\n", ptr->size);
+        write_line("UnknownMessage (%d)\n", ptr->type);
+        g_writer.indent++;
+        write_int("Size", ptr->size);
+        g_writer.indent--;
     }
 }
 DECL_FREE_FUNC(CustomData) {}

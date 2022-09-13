@@ -124,7 +124,7 @@ typedef struct _NetSvcMessage NetSvcMessage;
 typedef union _NetSvcMessageData NetSvcMessageData;
 
 typedef bool (*ParseNetSvcMsgFunc)(NetSvcMessageData* thisptr, BitStream* bits);
-typedef void (*PrintNetSvcMsgFunc)(const NetSvcMessageData* thisptr, FILE* fp);
+typedef void (*PrintNetSvcMsgFunc)(const NetSvcMessageData* thisptr);
 typedef void (*FreeNetSvcMsgFunc)(NetSvcMessageData* thisptr);
 
 typedef struct {

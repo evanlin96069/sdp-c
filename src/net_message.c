@@ -1,9 +1,10 @@
 #include "net_message.h"
 #include "demo_info.h"
-#include "alloc.h"
+#include "utils/alloc.h"
+#include "utils/indent_writer.h"
 
 #define DECL_NET_PARSE_FUNC(type) static bool PARSE_FUNC_NAME(type)(NetSvcMessageData* thisptr, BitStream* bits)
-#define DECL_NET_PRINT_FUNC(type) static void  PRINT_FUNC_NAME(type)(const NetSvcMessageData* thisptr, FILE* fp)
+#define DECL_NET_PRINT_FUNC(type) static void  PRINT_FUNC_NAME(type)(const NetSvcMessageData* thisptr)
 #define DECL_NET_FREE_FUNC(type) static void  FREE_FUNC_NAME(type)(NetSvcMessageData* thisptr)
 
 static uint32_t highest_bit_index(uint32_t x) {
@@ -27,7 +28,7 @@ DECL_NET_PARSE_FUNC(NetDisconnect) {
 }
 DECL_NET_PRINT_FUNC(NetDisconnect) {
     const DECL_PTR(NetDisconnect);
-    fprintf(fp, "\t\t\tText: %s\n", ptr->text);
+    write_string("Text", ptr->text);
 }
 DECL_NET_FREE_FUNC(NetDisconnect) {
     DECL_PTR(NetDisconnect);
@@ -44,9 +45,9 @@ DECL_NET_PARSE_FUNC(NetFile) {
 }
 DECL_NET_PRINT_FUNC(NetFile) {
     const DECL_PTR(NetFile);
-    fprintf(fp, "\t\t\tTransferId: %d\n", ptr->transfer_id);
-    fprintf(fp, "\t\t\tFileName: %s\n", ptr->file_name);
-    fprintf(fp, "\t\t\tFileFlags: %d\n", ptr->file_flags);
+    write_int("TransferId", ptr->transfer_id);
+    write_string("FileName", ptr->file_name);
+    write_int("FileFlags", ptr->file_flags);
 }
 DECL_NET_FREE_FUNC(NetFile) {
     DECL_PTR(NetFile);
@@ -61,7 +62,7 @@ DECL_NET_PARSE_FUNC(NetSplitScreenUser) {
 }
 DECL_NET_PRINT_FUNC(NetSplitScreenUser) {
     const DECL_PTR(NetSplitScreenUser);
-    fprintf(fp, "\t\t\tUnknown: %s\n", ptr->unknown ? "true" : "false");
+    write_bool("Unknown", ptr->unknown);
 }
 DECL_NET_FREE_FUNC(NetSplitScreenUser) {}
 
@@ -77,10 +78,10 @@ DECL_NET_PARSE_FUNC(NetTick) {
 }
 DECL_NET_PRINT_FUNC(NetTick) {
     const DECL_PTR(NetTick);
-    fprintf(fp, "\t\t\tTick: %d\n", ptr->tick);
+    write_int("Tick", ptr->tick);
     if (demo_info.network_protocol > 10) {
-        fprintf(fp, "\t\t\tHostFrameTime: %.3f\n", (float)ptr->host_frame_time / NET_TICK_SCALEUP);
-        fprintf(fp, "\t\t\tHostFrameTimeStdDev: %.3f\n", (float)ptr->host_frame_time_std_deviation / NET_TICK_SCALEUP);
+        write_float("HostFrameTime", (float)ptr->host_frame_time / NET_TICK_SCALEUP);
+        write_float("HostFrameTimeStdDev", (float)ptr->host_frame_time_std_deviation / NET_TICK_SCALEUP);
     }
 }
 DECL_NET_FREE_FUNC(NetTick) {}
@@ -93,7 +94,7 @@ DECL_NET_PARSE_FUNC(NetStringCmd) {
 }
 DECL_NET_PRINT_FUNC(NetStringCmd) {
     const DECL_PTR(NetStringCmd);
-    fprintf(fp, "\t\t\tCommand: %s\n", ptr->command);
+    write_string("Command", ptr->command);
 }
 DECL_NET_FREE_FUNC(NetStringCmd) {
     DECL_PTR(NetStringCmd);
@@ -114,10 +115,12 @@ DECL_NET_PARSE_FUNC(NetSetConVar) {
 DECL_NET_PRINT_FUNC(NetSetConVar) {
     const DECL_PTR(NetSetConVar);
     uint8_t len = ptr->length;
-    fprintf(fp, "\t\t\tConVars:\n");
+    write_line("ConVars:\n");
     for (int i = 0; i < len; i++) {
-        fprintf(fp, "\t\t\t\tName: %s\n", ptr->cvars[i].name);
-        fprintf(fp, "\t\t\t\tValue: %s\n", ptr->cvars[i].value);
+        g_writer.indent++;
+        write_string("Name", ptr->cvars[i].name);
+        write_string("Value", ptr->cvars[i].value);
+        g_writer.indent--;
     }
 }
 DECL_NET_FREE_FUNC(NetSetConVar) {
@@ -153,21 +156,21 @@ DECL_NET_PARSE_FUNC(NetSignonState) {
 }
 DECL_NET_PRINT_FUNC(NetSignonState) {
     const DECL_PTR(NetSignonState);
-    fprintf(fp, "\t\t\tSignonState: %d\n", ptr->signon_state);
-    fprintf(fp, "\t\t\tSpawnCount: %d\n", ptr->spawn_count);
+    write_int("SignonState", ptr->signon_state);
+    write_int("SpawnCount", ptr->spawn_count);
     if (demo_info.demo_protocol >= 4) {
-        fprintf(fp, "\t\t\tNumServerPlayers: %d\n", ptr->num_server_players);
+        write_int("NumServerPlayers", ptr->num_server_players);
         uint32_t len = ptr->ids_length;
-        fprintf(fp, "\t\t\tPlayersNetworkIds: [ ");
+        write_line("\t\t\tPlayersNetworkIds: [ ");
         for (uint32_t i = 0; i < len; i++) {
             if (i != 0) {
-                fprintf(fp, ", ");
+                fprintf(g_writer.fp, ", ");
             }
-            fprintf(fp, "%d", ptr->players_network_ids[i]);
+            fprintf(g_writer.fp, "%d", ptr->players_network_ids[i]);
         }
-        fprintf(fp, "]\n");
+        fprintf(g_writer.fp, "]\n");
         if (ptr->map_name_length > 0) {
-            fprintf(fp, "\t\t\tMapName: %s\n", ptr->map_name);
+            write_string("MapName", ptr->map_name);
         }
     }
 }
@@ -224,34 +227,34 @@ DECL_NET_PARSE_FUNC(SvcServerInfo) {
 }
 DECL_NET_PRINT_FUNC(SvcServerInfo) {
     const DECL_PTR(SvcServerInfo);
-    fprintf(fp, "\t\t\tNetworkProtocol: %d\n", ptr->network_protocol);
-    fprintf(fp, "\t\t\tServerCount: %d\n", ptr->server_count);
-    fprintf(fp, "\t\t\tIsHltv: %s\n", ptr->is_hltv ? "true" : "false");
-    fprintf(fp, "\t\t\tIsDedicated: %s\n", ptr->is_dedicated ? "true" : "false");
-    fprintf(fp, "\t\t\tClientCrc: %d\n", ptr->client_crc);
+    write_int("NetworkProtocol", ptr->network_protocol);
+    write_int("ServerCount", ptr->server_count);
+    write_bool("IsHltv", ptr->is_hltv);
+    write_bool("IsDedicated", ptr->is_dedicated);
+    write_int("ClientCrc", ptr->client_crc);
     if (demo_info.demo_protocol >= 4) {
-        fprintf(fp, "\t\t\tStringTableCrc: %d\n", ptr->string_table_crc);
+        write_int("StringTableCrc", ptr->string_table_crc);
     }
-    fprintf(fp, "\t\t\tMaxClass: %d\n", ptr->max_class);
+    write_int("MaxClass", ptr->max_class);
 
     if (demo_info.network_protocol == 24) {
         const uint32_t* md5 = (uint32_t*)&ptr->map_md5;
-        fprintf(fp, "\t\t\tMapMd5: %x%x%x%x\n", md5[0], md5[1], md5[2], md5[3]);
+        write_line("MapMd5: %x%x%x%x\n", md5[0], md5[1], md5[2], md5[3]);
     }
     else {
-        fprintf(fp, "\t\t\tMapCrc: %d\n", ptr->map_crc);
+        write_int("MapCrc", ptr->map_crc);
     }
 
-    fprintf(fp, "\t\t\tPlayerSlot: %d\n", ptr->player_slot);
-    fprintf(fp, "\t\t\tMaxClients: %d\n", ptr->max_clients);
-    fprintf(fp, "\t\t\tTickInterval: %.3f\n", ptr->tick_interval);
-    fprintf(fp, "\t\t\tCOs: %c\n", ptr->c_os);
-    fprintf(fp, "\t\t\tGameDir: %s\n", ptr->game_dir);
-    fprintf(fp, "\t\t\tMapName: %s\n", ptr->map_name);
-    fprintf(fp, "\t\t\tSkyName: %s\n", ptr->sky_name);
-    fprintf(fp, "\t\t\tHostName: %s\n", ptr->host_name);
+    write_int("PlayerSlot", ptr->player_slot);
+    write_int("MaxClients", ptr->max_clients);
+    write_float("TickInterval", ptr->tick_interval);
+    write_line("COs: %c\n", ptr->c_os);
+    write_string("GameDir", ptr->game_dir);
+    write_string("MapName", ptr->map_name);
+    write_string("SkyName", ptr->sky_name);
+    write_string("HostName", ptr->host_name);
     if (demo_info.network_protocol == 24) {
-        fprintf(fp, "\t\t\tHasReplay: %s\n", ptr->has_replay ? "true" : "false");
+        write_bool("HasReplay", ptr->has_replay);
     }
 }
 DECL_NET_FREE_FUNC(SvcServerInfo) {
@@ -273,8 +276,8 @@ DECL_NET_PARSE_FUNC(SvcSendTable) {
 }
 DECL_NET_PRINT_FUNC(SvcSendTable) {
     const DECL_PTR(SvcSendTable);
-    fprintf(fp, "\t\t\tNeedDecoder: %s\n", ptr->needs_decoder ? "true" : "false");
-    fprintf(fp, "\t\t\tLength: %d\n", ptr->length);
+    write_bool("NeedDecoder", ptr->needs_decoder);
+    write_int("Length", ptr->length);
 }
 DECL_NET_FREE_FUNC(SvcSendTable) {
     DECL_PTR(SvcSendTable);
@@ -301,14 +304,16 @@ DECL_NET_PARSE_FUNC(SvcClassInfo) {
 DECL_NET_PRINT_FUNC(SvcClassInfo) {
     const DECL_PTR(SvcClassInfo);
     uint32_t len = ptr->length;
-    fprintf(fp, "\t\t\tCreateOnClient: %s\n", ptr->create_on_client ? "true" : "false");
+    write_bool("CreateOnClient", ptr->create_on_client);
     const ServerClass* classes = ptr->server_classes;
     if (!ptr->create_on_client) {
-        fprintf(fp, "\t\t\tServerClasses\n");
+        write_line("ServerClasses\n");
         for (uint32_t i = 0; i < len; i++) {
-            fprintf(fp, "\t\t\t\tClassId: %d\n", classes[i].class_id);
-            fprintf(fp, "\t\t\t\tClassName: %s\n", classes[i].class_name);
-            fprintf(fp, "\t\t\t\tDataTableName: %s\n", classes[i].data_table_name);
+            g_writer.indent++;
+            write_int("ClassId", classes[i].class_id);
+            write_string("ClassName", classes[i].class_name);
+            write_string("DataTableName", classes[i].data_table_name);
+            g_writer.indent--;
         }
     }
 }
@@ -333,7 +338,7 @@ DECL_NET_PARSE_FUNC(SvcSetPause) {
 }
 DECL_NET_PRINT_FUNC(SvcSetPause) {
     const DECL_PTR(SvcSetPause);
-    fprintf(fp, "\t\t\tPaused: %s\n", ptr->paused ? "true" : "false");
+    write_bool("Paused", ptr->paused);
 }
 DECL_NET_FREE_FUNC(SvcSetPause) {}
 
@@ -369,17 +374,17 @@ DECL_NET_PARSE_FUNC(SvcCreateStringTable) {
 }
 DECL_NET_PRINT_FUNC(SvcCreateStringTable) {
     const DECL_PTR(SvcCreateStringTable);
-    fprintf(fp, "\t\t\tName: %s\n", ptr->name);
-    fprintf(fp, "\t\t\tMaxEntries: %d\n", ptr->max_entries);
-    fprintf(fp, "\t\t\tNumEntries: %d\n", ptr->num_entries);
-    fprintf(fp, "\t\t\tLength: %d\n", ptr->length);
-    fprintf(fp, "\t\t\tUserDataFixedSize: %s\n", ptr->user_data_fixed_size ? "true" : "false");
+    write_string("Name", ptr->name);
+    write_int("MaxEntries", ptr->max_entries);
+    write_int("NumEntries", ptr->num_entries);
+    write_int("Length", ptr->length);
+    write_bool("UserDataFixedSize", ptr->user_data_fixed_size);
     if (ptr->user_data_fixed_size) {
-        fprintf(fp, "\t\t\tUserDataSize: %d\n", ptr->user_data_size);
-        fprintf(fp, "\t\t\tUserDataSizeBits: %d\n", ptr->user_data_size_bits);
+        write_int("UserDataSize", ptr->user_data_size);
+        write_int("UserDataSizeBits", ptr->user_data_size_bits);
     }
     if (demo_info.network_protocol >= 15) {
-        fprintf(fp, "\t\t\tFlags: %d\n", ptr->flags);
+        write_int("Flags", ptr->flags);
     }
 }
 DECL_NET_FREE_FUNC(SvcCreateStringTable) {
@@ -410,11 +415,11 @@ DECL_NET_PARSE_FUNC(SvcUpdateStringTable) {
 }
 DECL_NET_PRINT_FUNC(SvcUpdateStringTable) {
     const DECL_PTR(SvcUpdateStringTable);
-    fprintf(fp, "\t\t\tTableId: %d\n", ptr->table_id);
+    write_int("TableId", ptr->table_id);
     if (ptr->has_num_changed_entries) {
-        fprintf(fp, "\t\t\tNumChangedEntries: %d\n", ptr->num_changed_entries);
+        write_int("NumChangedEntries", ptr->num_changed_entries);
     }
-    fprintf(fp, "\t\t\tLength: %d\n", ptr->length);
+    write_int("Length", ptr->length);
 }
 DECL_NET_FREE_FUNC(SvcUpdateStringTable) {
     DECL_PTR(SvcUpdateStringTable);
@@ -438,16 +443,16 @@ DECL_NET_PARSE_FUNC(SvcVoiceInit) {
 }
 DECL_NET_PRINT_FUNC(SvcVoiceInit) {
     const DECL_PTR(SvcVoiceInit);
-    fprintf(fp, "\t\t\tCodec: %s\n", ptr->codec);
-    fprintf(fp, "\t\t\tQuality: %d\n", ptr->quality);
+    write_string("Codec", ptr->codec);
+    write_int("Quality", ptr->quality);
     if (ptr->quality == 255) {
         if (demo_info.network_protocol == 24) {
             // steampipe uses short
-            fprintf(fp, "\t\t\tUnknown: %d\n", ptr->unknown);
+            write_int("Unknown:", ptr->unknown);
         }
         else if (demo_info.demo_protocol == 4) {
             // protocol 4 uses float
-            fprintf(fp, "\t\t\tUnknown: %.3f\n", *(float*)&ptr->unknown);
+            write_float("Unknown", *(float*)&ptr->unknown);
         }
     }
 }
@@ -468,9 +473,9 @@ DECL_NET_PARSE_FUNC(SvcVoiceData) {
 }
 DECL_NET_PRINT_FUNC(SvcVoiceData) {
     const DECL_PTR(SvcVoiceData);
-    fprintf(fp, "\t\t\tClient: %d\n", ptr->client);
-    fprintf(fp, "\t\t\tProximity: %d\n", ptr->proximity);
-    fprintf(fp, "\t\t\tLength: %d\n", ptr->length);
+    write_int("Client", ptr->client);
+    write_int("Proximity", ptr->proximity);
+    write_int("Length", ptr->length);
 }
 DECL_NET_FREE_FUNC(SvcVoiceData) {
     DECL_PTR(SvcVoiceData);
@@ -485,7 +490,7 @@ DECL_NET_PARSE_FUNC(SvcPrint) {
 }
 DECL_NET_PRINT_FUNC(SvcPrint) {
     const DECL_PTR(SvcPrint);
-    fprintf(fp, "\t\t\tMessage: %s\n", ptr->message);
+    write_string("Message", ptr->message);
 }
 DECL_NET_FREE_FUNC(SvcPrint) {
     DECL_PTR(SvcPrint);
@@ -512,9 +517,9 @@ DECL_NET_PARSE_FUNC(SvcSounds) {
 }
 DECL_NET_PRINT_FUNC(SvcSounds) {
     const DECL_PTR(SvcSounds);
-    fprintf(fp, "\t\t\tReliableSound: %s\n", ptr->reliable_sound ? "true" : "false");
-    fprintf(fp, "\t\t\tSize: %d\n", ptr->size);
-    fprintf(fp, "\t\t\tLength: %d\n", ptr->length);
+    write_bool("ReliableSound", ptr->reliable_sound);
+    write_int("Size", ptr->size);
+    write_int("Length", ptr->length);
 }
 DECL_NET_FREE_FUNC(SvcSounds) {
     DECL_PTR(SvcSounds);
@@ -529,7 +534,7 @@ DECL_NET_PARSE_FUNC(SvcSetView) {
 }
 DECL_NET_PRINT_FUNC(SvcSetView) {
     const DECL_PTR(SvcSetView);
-    fprintf(fp, "\t\t\tEntityIndex: %d\n", ptr->entity_index);
+    write_int("EntityIndex", ptr->entity_index);
 }
 DECL_NET_FREE_FUNC(SvcSetView) {}
 
@@ -544,8 +549,8 @@ DECL_NET_PARSE_FUNC(SvcFixAngle) {
 }
 DECL_NET_PRINT_FUNC(SvcFixAngle) {
     const DECL_PTR(SvcFixAngle);
-    fprintf(fp, "\t\t\tRelative: %s\n", ptr->relative ? "true" : "false");
-    fprintf(fp, "\t\t\tAngles: (%.3f, %.3f, %.3f)\n", ptr->angle[0], ptr->angle[1], ptr->angle[2]);
+    write_bool("Relative", ptr->relative);
+    write_vec3("Angles", ptr->angle);
 }
 DECL_NET_FREE_FUNC(SvcFixAngle) {}
 
@@ -559,7 +564,7 @@ DECL_NET_PARSE_FUNC(SvcCrosshairAngle) {
 }
 DECL_NET_PRINT_FUNC(SvcCrosshairAngle) {
     const DECL_PTR(SvcCrosshairAngle);
-    fprintf(fp, "\t\t\tAngles: (%.3f, %.3f, %.3f)\n", ptr->angle[0], ptr->angle[1], ptr->angle[2]);
+    write_vec3("Angles", ptr->angle);
 }
 DECL_NET_FREE_FUNC(SvcCrosshairAngle) {}
 
@@ -590,16 +595,16 @@ static float bitcoord_to_f32(BitCoord n) {
 DECL_NET_PRINT_FUNC(SvcBspDecal) {
     const DECL_PTR(SvcBspDecal);
     if (ptr->pos.x.exists)
-        fprintf(fp, "\t\t\tPosX: %.3f\n", bitcoord_to_f32(ptr->pos.x));
+        write_float("PosX", bitcoord_to_f32(ptr->pos.x));
     if (ptr->pos.y.exists)
-        fprintf(fp, "\t\t\tPosY: %.3f\n", bitcoord_to_f32(ptr->pos.y));
+        write_float("PosY", bitcoord_to_f32(ptr->pos.y));
     if (ptr->pos.z.exists)
-        fprintf(fp, "\t\t\tPosZ: %.3f\n", bitcoord_to_f32(ptr->pos.z));
+        write_float("PosZ", bitcoord_to_f32(ptr->pos.z));
     if (ptr->has_entity_index) {
-        fprintf(fp, "\t\t\tEntityIndex: %d\n", ptr->entity_index);
-        fprintf(fp, "\t\t\tModelIndex: %d\n", ptr->model_index);
+        write_int("EntityIndex", ptr->entity_index);
+        write_int("ModelIndex", ptr->model_index);
     }
-    fprintf(fp, "\t\t\tLowPriority: %s\n", ptr->low_priority ? "true" : "false");
+    write_bool("LowPriority", ptr->low_priority);
 }
 DECL_NET_FREE_FUNC(SvcBspDecal) {}
 
@@ -612,8 +617,8 @@ DECL_NET_PARSE_FUNC(SvcSplitScreen) {
 }
 DECL_NET_PRINT_FUNC(SvcSplitScreen) {
     const DECL_PTR(SvcSplitScreen);
-    fprintf(fp, "\t\t\tRemoveUser: %s\n", ptr->remove_user ? "true" : "false");
-    fprintf(fp, "\t\t\tSlot: %d\n", ptr->slot);
+    write_bool("RemoveUser", ptr->remove_user);
+    write_int("Slot", ptr->slot);
 }
 DECL_NET_FREE_FUNC(SvcSplitScreen) {}
 
@@ -628,8 +633,8 @@ DECL_NET_PARSE_FUNC(SvcUserMessage) {
 }
 DECL_NET_PRINT_FUNC(SvcUserMessage) {
     const DECL_PTR(SvcUserMessage);
-    fprintf(fp, "\t\t\tMsgType: %d\n", ptr->msg_type);
-    fprintf(fp, "\t\t\tLength: %d\n", ptr->length);
+    write_int("MsgType", ptr->msg_type);
+    write_int("Length", ptr->length);
 }
 DECL_NET_FREE_FUNC(SvcUserMessage) {
     DECL_PTR(SvcUserMessage);
@@ -648,9 +653,9 @@ DECL_NET_PARSE_FUNC(SvcEntityMessage) {
 }
 DECL_NET_PRINT_FUNC(SvcEntityMessage) {
     const DECL_PTR(SvcEntityMessage);
-    fprintf(fp, "\t\t\tEntityIndex: %d\n", ptr->entity_index);
-    fprintf(fp, "\t\t\tClassId: %d\n", ptr->class_id);
-    fprintf(fp, "\t\t\tLength: %d\n", ptr->length);
+    write_int("EntityIndex", ptr->entity_index);
+    write_int("ClassId", ptr->class_id);
+    write_int("Length", ptr->length);
 }
 DECL_NET_FREE_FUNC(SvcEntityMessage) {
     DECL_PTR(SvcEntityMessage);
@@ -667,7 +672,7 @@ DECL_NET_PARSE_FUNC(SvcGameEvent) {
 }
 DECL_NET_PRINT_FUNC(SvcGameEvent) {
     const DECL_PTR(SvcGameEvent);;
-    fprintf(fp, "\t\t\tLength: %d\n", ptr->length);
+    write_int("Length", ptr->length);
 }
 DECL_NET_FREE_FUNC(SvcGameEvent) {
     DECL_PTR(SvcGameEvent);
@@ -692,15 +697,15 @@ DECL_NET_PARSE_FUNC(SvcPacketEntities) {
 }
 DECL_NET_PRINT_FUNC(SvcPacketEntities) {
     const DECL_PTR(SvcPacketEntities);
-    fprintf(fp, "\t\t\tMaxEntries: %d\n", ptr->max_entries);
-    fprintf(fp, "\t\t\tIsDelta: %s\n", ptr->is_delta ? "true" : "false");
+    write_int("MaxEntries", ptr->max_entries);
+    write_bool("IsDelta", ptr->is_delta);
     if (ptr->is_delta) {
-        fprintf(fp, "\t\t\tDeltaFrom: %d\n", ptr->delta_from);
+        write_int("DeltaFrom", ptr->delta_from);
     }
-    fprintf(fp, "\t\t\tBaseLine: %s\n", ptr->base_line ? "true" : "false");
-    fprintf(fp, "\t\t\tUpdatedEntries: %d\n", ptr->updated_entries);
-    fprintf(fp, "\t\t\tLength: %d\n", ptr->length);
-    fprintf(fp, "\t\t\tUpdateBaseline: %s\n", ptr->update_baseline ? "true" : "false");
+    write_bool("BaseLine", ptr->base_line);
+    write_int("UpdatedEntries", ptr->updated_entries);
+    write_int("Length", ptr->length);
+    write_bool("UpdateBaseline", ptr->update_baseline);
 }
 DECL_NET_FREE_FUNC(SvcPacketEntities) {
     DECL_PTR(SvcPacketEntities);
@@ -725,8 +730,8 @@ DECL_NET_PARSE_FUNC(SvcTempEntities) {
 }
 DECL_NET_PRINT_FUNC(SvcTempEntities) {
     const DECL_PTR(SvcTempEntities);
-    fprintf(fp, "\t\t\tNumEntries: %d\n", ptr->num_entries);
-    fprintf(fp, "\t\t\tLength: %d\n", ptr->length);
+    write_int("NumEntries", ptr->num_entries);
+    write_int("Length", ptr->length);
 }
 DECL_NET_FREE_FUNC(SvcTempEntities) {
     DECL_PTR(SvcTempEntities);
@@ -741,7 +746,7 @@ DECL_NET_PARSE_FUNC(SvcPrefetch) {
 }
 DECL_NET_PRINT_FUNC(SvcPrefetch) {
     const DECL_PTR(SvcPrefetch);
-    fprintf(fp, "\t\t\tSoundIndex: %d\n", ptr->sound_index);
+    write_int("SoundIndex", ptr->sound_index);
 }
 DECL_NET_FREE_FUNC(SvcPrefetch) {}
 
@@ -756,8 +761,8 @@ DECL_NET_PARSE_FUNC(SvcMenu) {
 }
 DECL_NET_PRINT_FUNC(SvcMenu) {
     const DECL_PTR(SvcMenu);
-    fprintf(fp, "\t\t\tMenuType: %d\n", ptr->menu_type);
-    fprintf(fp, "\t\t\tLength: %d\n", ptr->length);
+    write_int("MenuType", ptr->menu_type);
+    write_int("Length", ptr->length);
 }
 DECL_NET_FREE_FUNC(SvcMenu) {
     DECL_PTR(SvcMenu);
@@ -775,8 +780,8 @@ DECL_NET_PARSE_FUNC(SvcGameEventList) {
 }
 DECL_NET_PRINT_FUNC(SvcGameEventList) {
     const DECL_PTR(SvcGameEventList);
-    fprintf(fp, "\t\t\tEvent: %d\n", ptr->events);
-    fprintf(fp, "\t\t\tLength: %d\n", ptr->length);
+    write_int("Event", ptr->events);
+    write_int("Length", ptr->length);
 }
 DECL_NET_FREE_FUNC(SvcGameEventList) {
     DECL_PTR(SvcGameEventList);
@@ -792,8 +797,8 @@ DECL_NET_PARSE_FUNC(SvcGetCvarValue) {
 }
 DECL_NET_PRINT_FUNC(SvcGetCvarValue) {
     const DECL_PTR(SvcGetCvarValue);
-    fprintf(fp, "\t\t\tCookie: %s\n", ptr->cookie);
-    fprintf(fp, "\t\t\tCvarName: %s\n", ptr->cvar_name);
+    write_string("Cookie", ptr->cookie);
+    write_string("CvarName", ptr->cvar_name);
 }
 DECL_NET_FREE_FUNC(SvcGetCvarValue) {
     DECL_PTR(SvcGetCvarValue);
@@ -811,7 +816,7 @@ DECL_NET_PARSE_FUNC(SvcCmdKeyValues) {
 }
 DECL_NET_PRINT_FUNC(SvcCmdKeyValues) {
     const DECL_PTR(SvcPaintmapData);
-    fprintf(fp, "\t\t\tLength: %d\n", ptr->length);
+    write_int("Length", ptr->length);
 }
 DECL_NET_FREE_FUNC(SvcCmdKeyValues) {
     DECL_PTR(SvcPaintmapData);
@@ -828,7 +833,7 @@ DECL_NET_PARSE_FUNC(SvcPaintmapData) {
 }
 DECL_NET_PRINT_FUNC(SvcPaintmapData) {
     const DECL_PTR(SvcPaintmapData);
-    fprintf(fp, "\t\t\tLength: %d\n", ptr->length);
+    write_int("Length", ptr->length);
 }
 DECL_NET_FREE_FUNC(SvcPaintmapData) {
     DECL_PTR(SvcPaintmapData);
