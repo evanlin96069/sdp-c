@@ -19,14 +19,16 @@ rm -f obj/*.o
 
 #compile obj files
 src="\
-	alloc.c
-	vector.c
+	utils/alloc.c
+	utils/vector.c
+	utils/indent_writer.c
 	bits.c
 	demo.c
 	demo_message.c
 	net_message.c"
 for i in $src; do
-	$CC src/$i -Iinclude $warnings $cflags -c -o obj/${i%.c}.o
+	filename="${i##*/}"
+	$CC src/$i -Iinclude $warnings $cflags -c -o obj/${filename%.c}.o
 done
 
 # libdemo.a

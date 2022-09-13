@@ -1,4 +1,4 @@
-#include "../src/ansi-style.h"
+#include "../src/utils/ansi-style.h"
 
 #define SUCCESS(text) "["SET_FG(GRN) "SUCCESS" RESET "] " text
 #define FAILED(text) "["SET_FG(RED) "FAILED" RESET "] " text

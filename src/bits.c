@@ -1,9 +1,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include "bits.h"
-#include "alloc.h"
 #include "vector.h"
-#include "print.h"
+#include "utils/alloc.h"
+#include "utils/print.h"
 
 BitStream* bits_init(uint8_t* data, size_t byte_size) {
     BitStream* bits = malloc_s(sizeof(BitStream));
