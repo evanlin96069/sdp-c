@@ -37,7 +37,7 @@ int main(int argc, char* argv[]) {
             help("  -P0", "Parse the header.");
             help("  -P1, -P", "Parse messages");
             help("  -P2", "Parse Net/Svc messages.");
-            help("  -P3", "Parse User messages. (Not implemented)");
+            help("  -P3", "Parse DataTables.");
             help("--debug", "Print debug information.");
             return 0;
         }

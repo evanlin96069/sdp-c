@@ -23,7 +23,9 @@ Options:
     - `-P1, -P`
     &emsp;Basic timging and Parse Usercmd.
     - `-P2`
-    &emsp;Parse Net/Svc messages and DataTables.
+    &emsp;Parse Net/Svc messages.
+    - `-P3`
+    &emsp;Parse DataTables.
 - `--debug`
 &emsp; Print debug information.
 
@@ -36,6 +38,8 @@ Options:
 | Half-Life 2 Old Engine (4044) | ✅ | ✅ | ✅ | ✅ |
 | Portal (3258)                 | ✅ | ✅ | ✅ | ✅ |
 | Portal (3420)                 | ✅ | ✅ | ✅ | ✅ |
+| Portal (3740)                 | ✅ | ✅ | ✅ | ✅ |
+| Portal (3943)                 | ✅ | ✅ | ✅ | ✅ |
 | Source Unpack (5135)          | ✅ | ✅ | ✅ | ✅ |
 | Steampipe HL2/Portal          | ✅ | ✅ | ✅ | ✅ |
 | Portal 2                      | ✅ | ✅ | ✅ | ✅ |
@@ -54,8 +58,6 @@ Options:
 
 ## Other Useful Resources
 - [.dem](https://nekz.me/dem/)
-- [Uncrafted Demo Parser](https://github.com/UncraftedName/UncraftedDemoParser)
+- [UncraftedDemoParser](https://github.com/UncraftedName/UncraftedDemoParser)
 - [demogobbler](https://github.com/lipsanen/demogobbler)
-
-If you are looking for demo to TAS converter for Portal 2:
-- [dem2tas](https://github.com/mlugg/dem2tas)
+- [zdem](https://github.com/mlugg/zdem)
