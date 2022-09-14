@@ -118,6 +118,7 @@ DECL_FREE_FUNC(Packet) {
             NetSvcMessage* msg = &ptr->data.data[i];
             demo_info.net_msg_settings->func_table[msg->type].free(&msg->data);
         }
+        free(ptr->data.data);
     }
 }
 
@@ -504,8 +505,14 @@ static void print_send_prop(SendProp* thisptr) {
         }
     }
 }
-static void free_send_prop(SendProp* thisptr) {
+static inline void free_send_prop(SendProp* thisptr) {
     free(thisptr->send_prop_name);
+    if (thisptr->send_prop_flags & (1 << 6)) {
+        free(thisptr->exclude_dt_name);
+    }
+    else if (thisptr->send_prop_type == SEND_PROP_DATATABLE) {
+        free(thisptr->table_name);
+    }
 }
 
 static bool parse_send_table(SendTable* thisptr, BitStream* bits) {
@@ -543,23 +550,25 @@ static void free_send_table(SendTable* thisptr) {
     for (size_t i = 0; i < thisptr->send_props.size; i++) {
         free_send_prop(&thisptr->send_props.data[i]);
     }
+    if (thisptr->send_props.size)
+        free(thisptr->send_props.data);
 }
 
-static void parse_server_class_info(ServerClassInfo* thisptr, BitStream* bits) {
+static inline void parse_server_class_info(ServerClassInfo* thisptr, BitStream* bits) {
     thisptr->num_of_classes = bits_read_le_u16(bits);
     thisptr->class_id = bits_read_le_u16(bits);
     thisptr->class_name = bits_read_str(bits);
     thisptr->data_table_name = bits_read_str(bits);
 }
 
-static void print_server_class_info(const ServerClassInfo* thisptr) {
+static inline void print_server_class_info(const ServerClassInfo* thisptr) {
     write_int("NumOfClasses", thisptr->num_of_classes);
     write_int("ClassId", thisptr->class_id);
     write_string("ClassName", thisptr->class_name);
     write_string("DataTableName", thisptr->data_table_name);
 }
 
-static void free_server_class_info(ServerClassInfo* thisptr) {
+static inline void free_server_class_info(ServerClassInfo* thisptr) {
     free(thisptr->class_name);
     free(thisptr->data_table_name);
 }
@@ -625,9 +634,11 @@ DECL_FREE_FUNC(DataTables) {
         for (size_t i = 0; i < ptr->send_tables.size; i++) {
             free_send_table(&ptr->send_tables.data[i]);
         }
+        free(ptr->send_tables.data);
         for (size_t i = 0; i < ptr->server_class_info.size; i++) {
             free_server_class_info(&ptr->server_class_info.data[i]);
         }
+        free(ptr->server_class_info.data);
     }
 }
 

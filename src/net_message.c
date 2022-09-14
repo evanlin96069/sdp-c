@@ -321,13 +321,12 @@ DECL_NET_FREE_FUNC(SvcClassInfo) {
     DECL_PTR(SvcClassInfo);
     uint32_t len = ptr->length;
     if (!ptr->create_on_client) {
-        ServerClass* classes = ptr->server_classes;
         for (uint32_t i = 0; i < len; i++) {
-            free(classes[i].class_name);
-            free(classes[i].data_table_name);
+            free(ptr->server_classes[i].class_name);
+            free(ptr->server_classes[i].data_table_name);
         }
-        free(classes);
     }
+    free(ptr->server_classes);
 }
 
 // SvcSetPause
