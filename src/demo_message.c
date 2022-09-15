@@ -69,7 +69,8 @@ DECL_PARSE_FUNC(Packet) {
                 break;
             }
         }
-        vector_shrink(ptr->data);
+        if (ptr->data.size)
+            vector_shrink(ptr->data);
         if (bits->current > end_index || !success) {
             warning("Packet not parsed correctly.\n");
         }
@@ -113,7 +114,7 @@ DECL_PRINT_FUNC(Packet) {
 }
 DECL_FREE_FUNC(Packet) {
     DECL_PTR(Packet);
-    if (demo_info.parse_level >= 2) {
+    if (demo_info.parse_level >= 2 && ptr->data.size) {
         for (size_t i = 0; i < ptr->data.size; i++) {
             NetSvcMessage* msg = &ptr->data.data[i];
             demo_info.net_msg_settings->func_table[msg->type].free(&msg->data);
@@ -519,17 +520,13 @@ static bool parse_send_table(SendTable* thisptr, BitStream* bits) {
     thisptr->needs_decoder = bits_read_one_bit(bits);
     thisptr->net_table_name = bits_read_str(bits);
     thisptr->num_of_props = bits_read_bits((demo_info.network_protocol <= 7) ? 9 : 10, bits);
-    thisptr->send_props.capacity = 0;
-    thisptr->send_props.size = 0;
     if (thisptr->num_of_props == 0)
         return true;
+    thisptr->send_props = malloc_s(thisptr->num_of_props * sizeof(SendProp));
     for (uint32_t i = 0; i < thisptr->num_of_props; i++) {
-        SendProp prop;
-        if (!parse_send_prop(&prop, bits))
+        if (!parse_send_prop(&thisptr->send_props[i], bits))
             return false;
-        vector_push(thisptr->send_props, prop);
     }
-    vector_shrink(thisptr->send_props);
     return true;
 }
 
@@ -537,21 +534,22 @@ static void print_send_table(const SendTable* thisptr) {
     write_bool("NeedsDecoder", thisptr->needs_decoder);
     write_string("NetTableName", thisptr->net_table_name);
     write_int("NumOfProps", thisptr->num_of_props);
-    for (size_t i = 0; i < thisptr->send_props.size; i++) {
+    for (size_t i = 0; i < thisptr->num_of_props; i++) {
         write_line("SendProp[%zd]\n", i);
         g_writer.indent++;
-        print_send_prop(&thisptr->send_props.data[i]);
+        print_send_prop(&thisptr->send_props[i]);
         g_writer.indent--;
     }
 }
 
 static void free_send_table(SendTable* thisptr) {
     free(thisptr->net_table_name);
-    for (size_t i = 0; i < thisptr->send_props.size; i++) {
-        free_send_prop(&thisptr->send_props.data[i]);
+    if (thisptr->num_of_props == 0)
+        return;
+    for (size_t i = 0; i < thisptr->num_of_props; i++) {
+        free_send_prop(&thisptr->send_props[i]);
     }
-    if (thisptr->send_props.size)
-        free(thisptr->send_props.data);
+    free(thisptr->send_props);
 }
 
 static inline void parse_server_class_info(ServerClassInfo* thisptr, BitStream* bits) {
@@ -589,17 +587,16 @@ DECL_PARSE_FUNC(DataTables) {
             }
             vector_push(ptr->send_tables, table);
         }
-        vector_shrink(ptr->send_tables);
-        ptr->server_class_info.capacity = 0;
-        ptr->server_class_info.size = 0;
+        if (ptr->send_tables.size)
+            vector_shrink(ptr->send_tables);
         if (!error) {
-            uint16_t classes = bits_read_le_u16(bits);
-            for (uint16_t i = 0; i < classes; i++) {
-                ServerClassInfo info;
-                parse_server_class_info(&info, bits);
-                vector_push(ptr->server_class_info, info);
+            ptr->classes = bits_read_le_u16(bits);
+            if (ptr->classes) {
+                ptr->server_class_info = malloc(ptr->classes * sizeof(ServerClassInfo));
+                for (uint16_t i = 0; i < ptr->classes; i++) {
+                    parse_server_class_info(&ptr->server_class_info[i], bits);
+                }
             }
-            vector_shrink(ptr->server_class_info);
         }
         if (error || bits->current > end_index) {
             warning("DataTables not parsed correctly.\n");
@@ -620,10 +617,10 @@ DECL_PRINT_FUNC(DataTables) {
             print_send_table(&ptr->send_tables.data[i]);
             g_writer.indent--;
         }
-        for (size_t i = 0; i < ptr->server_class_info.size; i++) {
+        for (size_t i = 0; i < ptr->classes; i++) {
             write_line("ServerClassInfo[%zd]\n", i);
             g_writer.indent++;
-            print_server_class_info(&ptr->server_class_info.data[i]);
+            print_server_class_info(&ptr->server_class_info[i]);
             g_writer.indent--;
         }
     }
@@ -634,11 +631,14 @@ DECL_FREE_FUNC(DataTables) {
         for (size_t i = 0; i < ptr->send_tables.size; i++) {
             free_send_table(&ptr->send_tables.data[i]);
         }
-        free(ptr->send_tables.data);
-        for (size_t i = 0; i < ptr->server_class_info.size; i++) {
-            free_server_class_info(&ptr->server_class_info.data[i]);
+        if (ptr->send_tables.size)
+            free(ptr->send_tables.data);
+        if (ptr->classes) {
+            for (size_t i = 0; i < ptr->classes; i++) {
+                free_server_class_info(&ptr->server_class_info[i]);
+            }
+            free(ptr->server_class_info);
         }
-        free(ptr->server_class_info.data);
     }
 }
 

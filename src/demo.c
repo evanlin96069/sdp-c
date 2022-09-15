@@ -77,6 +77,11 @@ int demo_parse(Demo* demo, int parse_level, bool debug_mode) {
 
     int measured_ticks = 0;
 
+    if (bits->byte_size < 1240) {
+        error("The input file is smaller than the header size.\n");
+        bits_free(bits);
+        return MEASURED_ERROR;
+    }
     parse_header(demo, bits);
 
     demo_info.demo_protocol = demo->header.demo_protocol;
@@ -207,7 +212,8 @@ int demo_parse(Demo* demo, int parse_level, bool debug_mode) {
     int result = MEASURED_SUCCESS;
     DemoMessageType type;
     uint32_t count = 0;
-    do {
+    // would be 32 but the last byte is often cut off 
+    while (bits->bit_size - bits->current >= 24) {
         count++;
         DemoMessage msg = { 0 };
         type = msg.type = bits_read_le_u8(bits);
@@ -253,8 +259,12 @@ int demo_parse(Demo* demo, int parse_level, bool debug_mode) {
         if (demo_info.msg_settings->enum_ids[type] == Packet_MSG && tick >= 0 && tick > measured_ticks) {
             measured_ticks = tick;
         }
-    } while (bits->bit_size - bits->current >= 24); // would be 32 but the last byte is often cut off
-
+    }
+    if (count == 0) {
+        error("The input file contains no demo message.\n");
+        bits_free(bits);
+        return MEASURED_ERROR;
+    }
     vector_shrink(demo->messages);
     bits_free(bits);
 

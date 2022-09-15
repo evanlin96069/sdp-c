@@ -178,13 +178,11 @@ typedef struct {
     uint32_t num_element;
 } SendProp;
 
-typedef VECTOR(SendProp) Vector_SendProp;
-
 typedef struct {
     bool needs_decoder;
     char* net_table_name;
     uint32_t num_of_props;
-    Vector_SendProp send_props;
+    SendProp* send_props;
 } SendTable;
 
 typedef struct {
@@ -195,12 +193,12 @@ typedef struct {
 } ServerClassInfo;
 
 typedef VECTOR(SendTable) Vector_SendTable;
-typedef VECTOR(ServerClassInfo) Vector_ServerClassInfo;
 
 typedef struct {
     uint32_t size;
     Vector_SendTable send_tables;
-    Vector_ServerClassInfo server_class_info;
+    uint16_t classes;
+    ServerClassInfo* server_class_info;
 } DataTables;
 
 typedef struct {
