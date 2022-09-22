@@ -1,7 +1,7 @@
 #include "indent_writer.h"
 #include "print.h"
 
-static inline void _write_indent() {
+static inline void _write_indent(void) {
     if (g_writer.indent < 0) {
         error("g_writer: negative indent.\n");
         return;
@@ -41,7 +41,7 @@ void write_vec3(const char* name, const float vec[3]) {
     fprintf(g_writer.fp, "%s: (%.3f, %.3f, %.3f)\n", name, vec[0], vec[1], vec[2]);
 }
 
-void write_nl() {
+void write_nl(void) {
     fputc('\n', g_writer.fp);
 }
 

@@ -12,7 +12,7 @@ void write_bool(const char* name, bool val);
 void write_float(const char* name, float val);
 void write_string(const char* name, const char* str);
 void write_vec3(const char* name, const float vec[3]);
-void write_nl();
+void write_nl(void);
 void write_line(const char* fmt, ...);
 
 typedef struct {
