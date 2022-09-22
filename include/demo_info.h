@@ -20,5 +20,4 @@ typedef struct {
 
 extern DemoInfo demo_info;
 
-
 #endif
