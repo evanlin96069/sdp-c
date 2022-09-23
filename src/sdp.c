@@ -4,9 +4,9 @@
 #include "demo.h"
 #include "utils/print.h"
 
-#define help(arg_name, help_info) printf("  %-24s %s\n", arg_name, help_info)
+#define VERSION "0.0.1"
 
-static int get_build_number();
+#define help(arg_name, help_info) printf("  %-24s %s\n", arg_name, help_info)
 
 enum {
     QUICK_MODE,
@@ -15,8 +15,6 @@ enum {
 };
 
 int main(int argc, char* argv[]) {
-    int build_number = get_build_number();
-
     char* input_file = NULL;
     char* output_file = NULL;
 
@@ -42,7 +40,7 @@ int main(int argc, char* argv[]) {
             return 0;
         }
         else if (strcmp(argv[i], "-v") == 0 || strcmp(argv[i], "--version") == 0) {
-            printf("sdp (build %d) by evanlin96069.\n", build_number);
+            printf("SourceDemoParser v" VERSION " by evanlin96069.\n");
             return 0;
         }
         else if (strcmp(argv[i], "-d") == 0 || strcmp(argv[i], "--dump") == 0) {
@@ -179,29 +177,4 @@ int main(int argc, char* argv[]) {
 
     demo_free(demo);
     return 0;
-}
-
-static int get_build_number() {
-    char* date = __DATE__;
-    char* month[12] = { "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" };
-    char day[12] = { 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
-
-    int m = 0;
-    int d = 0;
-    int y = 0;
-
-    for (m = 0; m < 11; m++) {
-        if (strncmp(&date[0], month[m], 3) == 0)
-            break;
-        d += day[m];
-    }
-    d += atoi(&date[4]) - 1;
-    y = atoi(&date[7]) - 1900;
-
-    int build = d + (int)((y - 1) * 365.25);
-    if (((y % 4) == 0) && m > 1) {
-        build += 1;
-    }
-    build -= 43720; // Sep 13 2020
-    return build;
 }
