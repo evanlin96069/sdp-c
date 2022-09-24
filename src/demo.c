@@ -36,8 +36,16 @@ Demo* new_demo(char* path) {
     return demo;
 }
 
-static void parse_header(Demo* demo, BitStream* bits) {
+static bool parse_header(Demo* demo, BitStream* bits) {
+    if (bits->byte_size < 1240) {
+        error("The input file is smaller than the header size.\n");
+        return false;
+    }
     bits_read_bytes(demo->header.demo_file_stamp, 8, bits);
+    if (strcmp(demo->header.demo_file_stamp, "HL2DEMO") != 0) {
+        error("Demo file stamp not HL2DEMO.\n");
+        return false;
+    }
     demo->header.demo_protocol = bits_read_le_u32(bits);
     demo->header.network_protocol = bits_read_le_u32(bits);
     bits_read_bytes(demo->header.server_name, 260, bits);
@@ -48,6 +56,7 @@ static void parse_header(Demo* demo, BitStream* bits) {
     demo->header.play_back_ticks = bits_read_le_u32(bits);
     demo->header.play_back_frames = bits_read_le_u32(bits);
     demo->header.sign_on_length = bits_read_le_u32(bits);
+    return true;
 }
 
 static void print_header(const Demo* demo) {
@@ -77,12 +86,11 @@ int demo_parse(Demo* demo, int parse_level, bool debug_mode) {
 
     int measured_ticks = 0;
 
-    if (bits->byte_size < 1240) {
-        error("The input file is smaller than the header size.\n");
+    if (!parse_header(demo, bits)) {
+        error("Bad demo header.\n");
         bits_free(bits);
         return MEASURED_ERROR;
     }
-    parse_header(demo, bits);
 
     demo_info.demo_protocol = demo->header.demo_protocol;
     demo_info.network_protocol = demo->header.network_protocol;
