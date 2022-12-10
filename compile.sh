@@ -1,52 +1,38 @@
-#!/bin/sh -e
+#!/bin/sh
 
-CC=gcc
+bin_dir=bin
+lib_dir=lib
+obj_dir=obj
+src_dir=src
 
-mkdir -p bin
-mkdir -p obj
-
-warnings="-Wall -Wextra -pedantic -std=c99 -Wno-unused-parameter"
-
-dbg=0
-if [ $dbg = 1 ]; then
-	cflags="-O0 -g3 -D_DEBUG"
-else
-	cflags="-O1"
+if [ ! -d "$bin_dir" ]; then
+  mkdir $bin_dir
 fi
 
-# clean up obj
-rm -f obj/*.o
+if [ ! -d "$lib_dir" ]; then
+  mkdir $lib_dir
+fi
 
-#compile obj files
-src="\
-	utils/alloc.c
-	utils/vector.c
-	utils/indent_writer.c
-	bits.c
-	demo.c
-	demo_message.c
-	net_message.c"
-for i in $src; do
-	filename="${i##*/}"
-	$CC src/$i -Iinclude $warnings $cflags -c -o obj/${filename%.c}.o
+if [ ! -d "$obj_dir" ]; then
+  mkdir $obj_dir
+fi
+
+for file in $src_dir/*.c; do
+  if [ "$file" != "$src_dir/utils/" ]; then
+    gcc -c -o "$obj_dir/$(basename "$file" .c).o" -I"include" "$file"
+  fi
 done
 
-# libdemo.a
-ar -rcs bin/libdemo.a obj/*.o
-
-# sdp.c
-$CC src/sdp.c bin/libdemo.a -Iinclude $warnings $cflags -o bin/sdp
-
-# tests
-test="\
-	demo.test.c
-	bits.test.c"
-
-for i in $test; do
-	$CC test/$i bin/libdemo.a $warnings $cflags -o bin/${i%.c}
+for file in $src_dir/utils/*.c; do
+  gcc -c -o "$obj_dir/$(basename "$file" .c).o" -I"include" "$file"
 done
 
-# run tests
-for i in $test; do
-	bin/${i%.c}
-done
+ar rcs $lib_dir/libdemo.a $obj_dir/*.o
+rm -rf obj
+
+gcc -I"include" -L"$lib_dir" -o"$bin_dir/sdp" "app/sdp.c" "$lib_dir/libdemo.a"
+gcc -I"include" -L"$lib_dir" -o"$bin_dir/bits.test" "test/bits.test.c" "$lib_dir/libdemo.a"
+gcc -I"include" -L"$lib_dir" -o"$bin_dir/demo.test" "test/demo.test.c" "$lib_dir/libdemo.a"
+
+$bin_dir/bits.test
+$bin_dir/demo.test

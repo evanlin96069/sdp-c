@@ -1,6 +1,6 @@
 .vscode/
 bin/
-bin-win/
+lib/
 obj/
 *.cfg
 *.txt

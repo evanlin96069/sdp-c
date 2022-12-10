@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "demo.h"
-#include "utils/print.h"
+#include "../src/utils/print.h"
 
 #define VERSION "0.0.1"
 
