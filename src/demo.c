@@ -26,10 +26,15 @@ DemoInfo demo_info = { 0 };
 
 Demo* new_demo(char* path) {
     Demo* demo = malloc_s(sizeof(Demo));
-    char* file_name = strrchr(path, '/');
-    file_name = file_name ? (file_name + 1) : path;
     demo->path = path;
-    demo->file_name = file_name;
+    char *name = path + strlen(path);
+    for (; name > path; name--) {
+        if ((*name == '\\') || (*name == '/')) {
+            name++;
+            break;
+        }
+    }
+    demo->file_name = name;
     demo->messages.size = 0;
     demo->messages.capacity = 0;
     demo->messages.data = NULL;
