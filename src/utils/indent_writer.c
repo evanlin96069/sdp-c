@@ -18,7 +18,7 @@ void write_int(const char* name, int val) {
 
 void write_size(const char* name, size_t val) {
     _write_indent();
-    fprintf(g_writer.fp, "%s: %zd\n", name, val);
+    fprintf(g_writer.fp, "%s: %u\n", name, (unsigned int)val);
 }
 
 void write_bool(const char* name, bool val) {
