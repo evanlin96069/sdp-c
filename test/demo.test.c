@@ -17,20 +17,20 @@ do {                                                                            
 int tests_run = 0;
 
 static char* all_tests() {
-    TEST_DEMO("hl2_oe_2153.dem", 2299, HL2_OE_2153);
-    TEST_DEMO("hl2_oe_2187.dem", 2232, HL2_OE_2187);
-    TEST_DEMO("DMoMM.dem", 876, DMOMM);
-    TEST_DEMO("hl2_oe_4044.dem", 2342, HL2_OE_4044);
-    TEST_DEMO("Portal_3258.dem", 852, PORTAL_3258);
-    TEST_DEMO("Portal_3420.dem", 255, PORTAL_3420);
-    TEST_DEMO("Portal_3740.dem", 843, PORTAL_3740);
-    TEST_DEMO("Portal_3943.dem", 875, PORTAL_3740);
-    TEST_DEMO("Portal_4295.dem", 907, SOURCE_UNPACK);
-    TEST_DEMO("Portal_5135.dem", 1247, SOURCE_UNPACK);
-    TEST_DEMO("hl2_5135.dem", 2133, SOURCE_UNPACK);
-    TEST_DEMO("Portal_1910503.dem", 752, STEAMPIPE);
-    TEST_DEMO("Portal_7197370.dem", 908, STEAMPIPE);
-    TEST_DEMO("Portal2.dem", 732, PORTAL_2);
+    TEST_DEMO("hl2_oe_2153.dem", 2300, HL2_OE_2153);
+    TEST_DEMO("hl2_oe_2187.dem", 2233, HL2_OE_2187);
+    TEST_DEMO("DMoMM.dem", 877, DMOMM);
+    TEST_DEMO("hl2_oe_4044.dem", 2343, HL2_OE_4044);
+    TEST_DEMO("Portal_3258.dem", 853, PORTAL_3258);
+    TEST_DEMO("Portal_3420.dem", 256, PORTAL_3420);
+    TEST_DEMO("Portal_3740.dem", 844, PORTAL_3740);
+    TEST_DEMO("Portal_3943.dem", 876, PORTAL_3740);
+    TEST_DEMO("Portal_4295.dem", 908, SOURCE_UNPACK);
+    TEST_DEMO("Portal_5135.dem", 1248, SOURCE_UNPACK);
+    TEST_DEMO("hl2_5135.dem", 2134, SOURCE_UNPACK);
+    TEST_DEMO("Portal_1910503.dem", 753, STEAMPIPE);
+    TEST_DEMO("Portal_7197370.dem", 909, STEAMPIPE);
+    TEST_DEMO("Portal2.dem", 733, PORTAL_2);
     return 0;
 }
 

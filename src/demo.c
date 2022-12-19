@@ -103,9 +103,7 @@ int demo_parse(Demo* demo, int parse_level, bool debug_mode) {
     demo_info.msg_settings = NULL;
     demo_info.net_msg_settings = NULL;
 
-
     /*
-
     |  Build   | Demo protocol | Netwrok protocol |
     |   2153   |       2       |        5         |
     |   2187   |       2       |        6         |
@@ -120,8 +118,8 @@ int demo_parse(Demo* demo, int parse_level, bool debug_mode) {
     |  1910503 |       3       |        24        |
     |  7197370 |       3       |        24        |
     | Portal 2 |       4       |       2001       |
-
     */
+
     // TODO: needs improvement
     int supported_parse_level = 0;
     demo_info.game = GAME_UNKNOWN;
@@ -281,7 +279,7 @@ int demo_parse(Demo* demo, int parse_level, bool debug_mode) {
     vector_shrink(demo->messages);
     bits_free(bits);
 
-    demo->measured_ticks = measured_ticks;
+    demo->measured_ticks = measured_ticks + 1; // "0th tick"
     if (demo_info.has_tick_interval) {
         debug("Found tick interval: %f\n", demo_info.tick_interval);
         demo->tick_interval = demo_info.tick_interval;
