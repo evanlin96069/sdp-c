@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "demo.h"
+#include "demo_info.h"
 #include "version.h"
 #include "../src/utils/print.h"
 
@@ -12,6 +13,90 @@ enum {
     DUMP_MODE,
     TAS_MODE
 };
+
+static SvcServerInfo* get_SvcServerInfo(const Demo* demo) {
+    int signon_type = demo_info.msg_settings->enum_ids[SignOn_MSG];
+    int server_info = demo_info.net_msg_settings->enum_ids[SvcServerInfo_MSG];
+    for(size_t i = 0; i < demo->messages.size; i++) {
+        const DemoMessage* msg = &demo->messages.data[i];
+        if (msg->type == signon_type) {
+            const Packet* packet = &msg->data.Packet_message;
+            for (size_t j = 0; j < packet->data.size; j++) {
+                if (packet->data.data[j].type == server_info) {
+                    return &packet->data.data[j].data.SvcServerInfo_message;
+                }
+            }
+        }
+    }
+    return NULL;
+}
+
+static void print_quick_mode(const Demo* demo, int result) {
+    const DemoHeader* header = &demo->header;
+    const SvcServerInfo* server_info = NULL;
+    if (demo->parse_level >= 2) {
+        server_info = get_SvcServerInfo(demo);
+    }
+
+    printf("FileName:           %s\n", demo->file_name);
+    printf("DemoProtocol:       %d\n", header->demo_protocol);
+    printf("NetworkProtocol:    %d\n", header->network_protocol);
+    printf("ServerName:         %s\n", header->server_name);
+    printf("ClientName:         %s\n", header->client_name);
+    printf("MapName:            %s\n", header->map_name);
+    printf("GameDirectory:      %s\n", header->game_dir);
+    printf("PlayBackTime:       %.3f\n", header->play_back_time);
+    printf("PlayBackTicks:      %d\n", header->play_back_ticks);
+    printf("PlayBackFrames:     %d\n", header->play_back_frames);
+    if (server_info) {
+        printf("ServerCount:        %d\n", server_info->server_count);
+    }
+
+    if (result != NOT_MEASURED) {
+#if 0
+        // Print Tags
+        int console_cmd = demo_info.msg_settings->enum_ids[ConsoleCmd_MSG];
+        for(size_t i = 0; i < demo->messages.size; i++) {
+            const DemoMessage* msg = &demo->messages.data[i];
+            if (msg->type == console_cmd) {
+                // TODO: search string
+            }
+        }
+#endif
+        // Print time
+        printf(SET_FG(CYN));
+        printf("Measured ticks:     %d\n", demo->measured_ticks);
+        printf("Measured time:      %.3f\n", demo->measured_ticks * demo->tick_interval);
+        printf(RESET);
+    }
+}
+
+static void demo_gen_tas_script(const Demo* demo, FILE* fp) {
+    fprintf(fp, "unpause;\n");
+
+    int stop = demo_info.msg_settings->enum_ids[Stop_MSG];
+    int console_cmd = demo_info.msg_settings->enum_ids[ConsoleCmd_MSG];
+    int user_cmd = demo_info.msg_settings->enum_ids[UserCmd_MSG];
+
+    for (size_t i = 0; i < demo->messages.size; i++) {
+        const DemoMessage* msg = &demo->messages.data[i];
+        int tick = msg->tick;
+        if (tick > 0) {
+            int type = msg->type;
+            if (type == stop) {
+                break;
+            }
+            if (type == console_cmd) {
+                char* command = (char*)msg->data.ConsoleCmd_message.data;
+                fprintf(fp, "_y_spt_afterframes %d \"%s;\";\n", tick, command);
+            }
+            else if (type == user_cmd) {
+                const UserCmdInfo* cmd = &msg->data.UserCmd_message.data;
+                fprintf(fp, "_y_spt_afterframes %d \"_y_spt_setangles %.8f %.8f;\";\n", tick, cmd->view_angles_x, cmd->view_angles_y);
+            }
+        }
+    }
+}
 
 int main(int argc, char* argv[]) {
     char* input_file = NULL;
@@ -100,9 +185,6 @@ int main(int argc, char* argv[]) {
             }
         }
     }
-    else if (parse_level < 0) {
-        parse_level = 1;
-    }
 
     Demo* demo = new_demo(input_file);
 
@@ -123,25 +205,7 @@ int main(int argc, char* argv[]) {
         demo->tick_interval = 0.015f;
     }
     if (mode == QUICK_MODE) {
-        const DemoHeader* header = &demo->header;
-        printf("FileName:           %s\n", demo->file_name);
-        printf("DemoFileStamp:      %s\n", header->demo_file_stamp);
-        printf("DemoProtocol:       %d\n", header->demo_protocol);
-        printf("NetworkProtocol:    %d\n", header->network_protocol);
-        printf("ServerName:         %s\n", header->server_name);
-        printf("ClientName:         %s\n", header->client_name);
-        printf("MapName:            %s\n", header->map_name);
-        printf("GameDirectory:      %s\n", header->game_dir);
-        printf("PlayBackTime:       %.3f\n", header->play_back_time);
-        printf("PlayBackTicks:      %d\n", header->play_back_ticks);
-        printf("PlayBackFrames:     %d\n", header->play_back_frames);
-        printf("SignOnLength:       %d\n\n", header->sign_on_length);
-        if (result != NOT_MEASURED) {
-            printf(SET_FG(CYN));
-            printf("Measured ticks:     %d\n", demo->measured_ticks);
-            printf("Measured time:      %.3f\n", demo->measured_ticks * demo->tick_interval);
-            printf(RESET);
-        }
+        print_quick_mode(demo, result);
         getchar();
     }
     else if (mode == DUMP_MODE) {
