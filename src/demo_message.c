@@ -100,7 +100,8 @@ DECL_PRINT_FUNC(Packet) {
     write_int("OutSequence", ptr->out_sequence);
 
     if (demo_info.parse_level >= 2) {
-        write_line("NET/SVC-Messages:");
+        write_line("NET/SVC-Messages:\n");
+        g_writer.indent++;
         for (size_t i = 0; i < ptr->data.size; i++) {
             NetSvcMessage* msg = &ptr->data.data[i];
             NetSvcMessageType type = msg->type;
@@ -110,6 +111,7 @@ DECL_PRINT_FUNC(Packet) {
             demo_info.net_msg_settings->func_table[type].print(&msg->data);
             g_writer.indent--;
         }
+        g_writer.indent--;
     }
 }
 DECL_FREE_FUNC(Packet) {
