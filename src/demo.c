@@ -313,33 +313,6 @@ void demo_verbose(const Demo* demo, FILE* fp) {
     }
 }
 
-void demo_gen_tas_script(const Demo* demo, FILE* fp) {
-    fprintf(fp, "unpause;\n");
-
-    int stop = demo_info.msg_settings->enum_ids[Stop_MSG];
-    int console_cmd = demo_info.msg_settings->enum_ids[ConsoleCmd_MSG];
-    int user_cmd = demo_info.msg_settings->enum_ids[UserCmd_MSG];
-
-    for (size_t i = 0; i < demo->messages.size; i++) {
-        const DemoMessage* msg = &demo->messages.data[i];
-        int tick = msg->tick;
-        if (tick > 0) {
-            int type = msg->type;
-            if (type == stop) {
-                break;
-            }
-            if (type == console_cmd) {
-                char* command = (char*)msg->data.ConsoleCmd_message.data;
-                fprintf(fp, "_y_spt_afterframes %d \"%s;\";\n", tick, command);
-            }
-            else if (type == user_cmd) {
-                const UserCmdInfo* cmd = &msg->data.UserCmd_message.data;
-                fprintf(fp, "_y_spt_afterframes %d \"_y_spt_setangles %.8f %.8f;\";\n", tick, cmd->view_angles_x, cmd->view_angles_y);
-            }
-        }
-    }
-}
-
 void demo_free(Demo* demo) {
     if (!demo) return;
     for (size_t i = 0; i < demo->messages.size; i++) {

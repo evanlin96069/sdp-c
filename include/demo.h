@@ -58,7 +58,6 @@ Demo* new_demo(char* path);
 int demo_parse(Demo* demo, int parse_level, bool debug_mode);
 void demo_print_header(const Demo* demo, FILE* fp);
 void demo_verbose(const Demo* demo, FILE* fp);
-void demo_gen_tas_script(const Demo* demo, FILE* fp);
 void demo_free(Demo* demo);
 
 #endif
