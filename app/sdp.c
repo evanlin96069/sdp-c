@@ -6,6 +6,11 @@
 #include "version.h"
 #include "../src/utils/print.h"
 
+#ifdef _WIN32
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
+#endif
+
 #define help(arg_name, help_info) printf("  %-24s %s\n", arg_name, help_info)
 
 enum {
@@ -105,6 +110,10 @@ int main(int argc, char* argv[]) {
     int mode = QUICK_MODE;
     int parse_level = -1;
     bool debug_mode = false;
+
+#ifdef _WIN32
+    SetConsoleOutputCP(CP_UTF8);
+#endif
 
     for (int i = 1; i < argc; i++) {
         if (strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "--help") == 0) {
