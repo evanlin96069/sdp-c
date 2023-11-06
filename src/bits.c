@@ -1,3 +1,4 @@
+#include <assert.h>
 #include <stdlib.h>
 #include <string.h>
 #include "bits.h"
@@ -91,23 +92,30 @@ float bits_read_le_f32(BitStream* bits) {
 }
 
 uint32_t bits_read_bits(size_t bit_size, BitStream* bits) {
+    assert(bit_size <= 32);
+
     if (bits->current + bit_size > bits->bit_size) {
         error("BitsStream overflow when reading.\n");
         abort();
     }
+
     uint32_t n = 0;
     size_t remain = 64 - bits->offset;
     size_t shift = 0;
-    if (bit_size > remain) {
+    if (remain == 0) {
+        bits_fetch(bits);
+    } else if (bit_size > remain) {
         // need two chunk
         n |= (bits->fetch >> bits->offset) & ((1 << remain) - 1);
         bits_skip(remain, bits);
         bit_size -= remain;
         shift = remain;
     }
+
     n |= ((bits->fetch >> bits->offset) & (((uint64_t)1 << bit_size) - 1)) << shift;
     bits->offset += bit_size;
     bits->current += bit_size;
+
     return n;
 }
 
